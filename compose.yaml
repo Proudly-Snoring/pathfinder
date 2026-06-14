@@ -1,0 +1,66 @@
+# Pathfinder + dependencies for local podman use.
+#
+# Usage:
+# - Copy .env.example to .env and adjust before first run.
+# - Start stack with `podman compose up -d --build`.
+# - Delete stack with `podman compose down -v` /!\ remove all data
+
+services:
+  pfdb:
+    image: docker.io/library/mariadb:10.6
+    container_name: pfdb
+    environment:
+      MARIADB_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_USER: ${MYSQL_USER} # consumed by init-databases.sh on first init
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_PF_DB_NAME: ${MYSQL_PF_DB_NAME}
+      MYSQL_UNIVERSE_DB_NAME: ${MYSQL_UNIVERSE_DB_NAME}
+      MYSQL_CCP_DB_NAME: ${MYSQL_CCP_DB_NAME}
+      TZ: ${TZ}
+    volumes:
+      - db_data:/var/lib/mysql
+      - ./deployment/db/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh:ro
+    restart: unless-stopped
+
+  redis:
+    image: docker.io/library/redis:7-alpine
+    container_name: redis
+    command: ["redis-server", "--appendonly", "yes", "--maxmemory", "64mb", "--maxmemory-policy", "allkeys-lru"]
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
+  socket:
+    image: ghcr.io/goryn-clade/pf-websocket:latest
+    container_name: socket
+    command: ["--tcpHost", "0.0.0.0"]
+    environment:
+      TZ: ${TZ}
+    volumes:
+      - pf_history:/var/www/html/pathfinder/history/map
+    restart: unless-stopped
+
+  pf:
+    container_name: pathfinder
+    build:
+      context: .
+      dockerfile: deployment/pathfinder.Dockerfile
+    image: pathfinder:local
+    env_file:
+      - .env
+    ports:
+      - "${HTTP_PORT}:80"
+    volumes:
+      - pf_history:/var/www/html/pathfinder/history/map
+    depends_on:
+      - pfdb
+      - redis
+      - socket
+    restart: unless-stopped
+
+volumes:
+  db_data:
+  redis_data:
+  pf_history:

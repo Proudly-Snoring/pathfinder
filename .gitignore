@@ -49,6 +49,8 @@ Temporary Items
 .idea
 .usage
 *.gz
+# container runtime env (copy of .env.example)
+.env
 composer-dev.lock
 /conf/
 /node_modules/

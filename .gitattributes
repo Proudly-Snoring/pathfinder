@@ -1,17 +1,25 @@
 # Auto detect text files and perform LF normalization
 * text=auto
 
+# Container build assets run inside Linux images: force LF so shebangs/configs
+# don't break with CRLF when the build context is checked out on Windows.
+*.sh text eol=lf
+deployment/** text eol=lf
+compose.yaml text eol=lf
+.dockerignore text eol=lf
+.env.example text eol=lf
+
 # Custom for Visual Studio
-*.cs     diff=csharp
+*.cs diff=csharp
 
 # Standard to msysgit
-*.doc	 diff=astextplain
-*.DOC	 diff=astextplain
+*.doc diff=astextplain
+*.DOC diff=astextplain
 *.docx diff=astextplain
 *.DOCX diff=astextplain
-*.dot  diff=astextplain
-*.DOT  diff=astextplain
-*.pdf  diff=astextplain
-*.PDF	 diff=astextplain
-*.rtf	 diff=astextplain
-*.RTF	 diff=astextplain
+*.dot diff=astextplain
+*.DOT diff=astextplain
+*.pdf diff=astextplain
+*.PDF diff=astextplain
+*.rtf diff=astextplain
+*.RTF diff=astextplain

@@ -1,0 +1,14 @@
+*.md
+.env
+.env.*
+.git
+.github
+.jshintrc
+conf
+gulpfile.js
+letsencrypt
+logs/*
+node_modules
+sass
+tmp/*
+vendor
