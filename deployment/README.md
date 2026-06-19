@@ -40,18 +40,13 @@ with the production Traefik + Let's Encrypt layer replaced by a directly exposed
 ## First-run setup
 
 1. Open `http://localhost:8080/setup` — basic-auth user `pf`, password is the `APP_PASSWORD` defined in .env.
-2. Run the setup wizard: it builds the database schema and imports the static map data (`export/csv/*`).
+2. Run the setup wizard: it builds the database schema and imports the static map data (`data/*`).
    Make sure to click both the "Setup tables" and "Fix columns/keys" buttons for both tables (pathfinder and eve_universe - 4 buttons total).
 3. **Comment out the `@setup` route** in `app/routes.ini` (and rebuild) once done, as that file warns.
 
 ### EVE universe (New Eden) data
 
-The `eve_universe` DB is populated from CCP's ESI API — on demand as maps are used, and by the `/cron` jobs (which run inside the `pf` container).
-A pre-built snapshot ships at `export/sql/eve_universe.sql.zip` to skip the slow initial ESI bootstrap.
-Import it manually if you want a head start (run from the repo root):
-```shell
-unzip -p export/sql/eve_universe.sql.zip | podman compose exec -T pfdb mysql -uroot -p"$MYSQL_ROOT_PASSWORD" eve_universe
-```
+The `eve_universe` DB (systems, stargates, types, …) is bootstrapped by the setup page's index builder, which downloads CCP's Static Data Export (SDE) and imports it. Ongoing updates (sovereignty, faction warfare, …) come from CCP's ESI API via the `/cron` jobs (which run inside the `pf` container).
 
 ## Logging
 

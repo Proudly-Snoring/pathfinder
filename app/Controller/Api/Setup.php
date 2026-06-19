@@ -11,6 +11,8 @@ namespace Exodus4D\Pathfinder\Controller\Api;
 use Exodus4D\Pathfinder\Lib\Config;
 use Exodus4D\Pathfinder\Lib\Cron;
 use Exodus4D\Pathfinder\Lib\Format\Number;
+use Exodus4D\Pathfinder\Lib\Sde\Archive;
+use Exodus4D\Pathfinder\Lib\Sde\Importer;
 use Exodus4D\Pathfinder\Controller;
 use Exodus4D\Pathfinder\Model;
 
@@ -146,7 +148,7 @@ class Setup extends Controller\Controller {
         $controller = new Controller\Ccp\Universe();
         switch($type){
             case 'Systems':
-                $length = 100;
+                $length = 50;
                 $buildInfo = $controller->buildSystemsIndex($offset, $length);
 
                 $return->offset = $buildInfo['offset'];
@@ -155,9 +157,10 @@ class Setup extends Controller\Controller {
                 $return->countBuildAll = $return->offset;
                 break;
             case 'Wormholes':
-                $groupId = Config::ESI_GROUP_WORMHOLE_ID;
-                $length = 10;
-                $buildInfo = $controller->setupGroup($groupId, $offset, $length, true);
+                // import all wormhole types (group 988) from the SDE, with dogma attributes
+                // (security class, mass, …) + the curated wormhole.csv scanWormholeStrength overlay.
+                $length = 30;
+                $buildInfo = (new Importer())->importTypesByGroup(Config::ESI_GROUP_WORMHOLE_ID, $offset, $length, true);
 
                 $return->offset = $buildInfo['offset'];
                 $return->countAll = $buildInfo['countAll'];
@@ -165,32 +168,56 @@ class Setup extends Controller\Controller {
                 $return->countBuildAll = $return->offset;
                 break;
             case 'Structures':
-                $categoryId = Config::ESI_CATEGORY_STRUCTURE_ID;
-                $length = 1;
-                $buildInfo = $controller->setupCategory($categoryId, $offset, $length);
-                $categoryUniverseModel =  Model\Universe\AbstractUniverseModel::getNew('CategoryModel');
-                $categoryUniverseModel->getById($categoryId, 0);
+                // import all structure types (category 65) from the SDE, chunked by type.
+                $length = 20;
+                $buildInfo = (new Importer())->importTypesByCategory(Config::ESI_CATEGORY_STRUCTURE_ID, $offset, $length, false);
 
                 $return->offset = $buildInfo['offset'];
+                $return->countAll = $buildInfo['countAll'];
                 $return->countBuild = $buildInfo['count'];
                 $return->countBuildAll = $return->offset;
-                $return->subCount = [
-                    'countBuildAll' => $categoryUniverseModel->getTypesCount(false)
-                ];
                 break;
             case 'Ships':
-                $categoryId = Config::ESI_CATEGORY_SHIP_ID;
-                $length = 2;
-                $buildInfo = $controller->setupCategory($categoryId, $offset, $length);
-                $categoryUniverseModel =  Model\Universe\AbstractUniverseModel::getNew('CategoryModel');
-                $categoryUniverseModel->getById($categoryId, 0);
+                // import all ship types (category 6) from the SDE, chunked by type.
+                $length = 40;
+                $buildInfo = (new Importer())->importTypesByCategory(Config::ESI_CATEGORY_SHIP_ID, $offset, $length, false);
 
                 $return->offset = $buildInfo['offset'];
+                $return->countAll = $buildInfo['countAll'];
                 $return->countBuild = $buildInfo['count'];
                 $return->countBuildAll = $return->offset;
-                $return->subCount = [
-                    'countBuildAll' => $categoryUniverseModel->getTypesCount(false)
-                ];
+                break;
+            case 'SdeDownload':
+                // download the CCP SDE zip (one short request; ~84 MB, measured ~1.3s).
+                // Entity tasks below extract the files they need from it on demand.
+                (new Importer())->getArchive()->download();
+                $return->countAll = 1;
+                $return->offset = 1;
+                $return->countBuild = 1;
+                $return->countBuildAll = 1;
+                break;
+            case 'System':
+                // import systems (+ regions, constellations, stars, planets) from the SDE.
+                // Required before statics & the systems index. No network -> 50/chunk is well
+                // under nginx's 60s fastcgi_read_timeout (regions+constellations run at offset 0).
+                $length = 100;
+                $buildInfo = (new Importer())->importSystems($offset, $length);
+
+                $return->offset = $buildInfo['offset'];
+                $return->countAll = $buildInfo['countAll'];
+                $return->countBuild = $buildInfo['count'];
+                $return->countBuildAll = $return->offset;
+                break;
+            case 'Stargate':
+                // import stargate connections from the SDE (systems must exist). Required for
+                // the neighbour index. No network -> 200/chunk is well under the 60s timeout.
+                $length = 200;
+                $buildInfo = (new Importer())->importStargates($offset, $length);
+
+                $return->offset = $buildInfo['offset'];
+                $return->countAll = $buildInfo['countAll'];
+                $return->countBuild = $buildInfo['count'];
+                $return->countBuildAll = $return->offset;
                 break;
             case 'SystemStatic':
                 // smaller chunk than a pure DB import: each row may now trigger ESI
@@ -246,6 +273,11 @@ class Setup extends Controller\Controller {
 
         $controller = new Controller\Ccp\Universe();
         switch($type) {
+            case 'SdeDownload':
+                // delete the extracted SDE files + the source zip (transient build input)
+                (new Archive())->cleanup();
+                $return->countAll = 0;
+                break;
             case 'Systems':
                 $controller->clearSystemsIndex();
                 $systemUniverseModel =  Model\Universe\AbstractUniverseModel::getNew('SystemModel');

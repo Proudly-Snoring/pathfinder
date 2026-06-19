@@ -811,7 +811,7 @@ abstract class AbstractModel extends Cortex {
         };
 
         if($fileName){
-            $filePath = self::getF3()->get('EXPORT') . 'csv/' . $fileName . '.csv';
+            $filePath = self::getF3()->get('DATA') . $fileName . '.csv';
             if(is_file($filePath)){
                 $handle = @fopen($filePath, 'r');
                 $keys = array_map('lcfirst', fgetcsv($handle, 0, ';'));

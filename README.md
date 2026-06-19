@@ -42,9 +42,7 @@ Issues should be reported in the [Issue](https://github.com/exodus4d/pathfinder/
   │  ├─ plugin.ini            → config - custom plugins
   │  ├─ requirements.ini      → config - system requirements
   │  └─ routes.ini            → config - routes
-  ├─ export/           [0755] → static data
-  │  ├─ csv/                  → *.csv used by /setup page
-  │  └─ sql/                  → DB dump for import (eve_universe.sql.zip)
+  ├─ data/             [0755] → static *.csv data used by /setup page
   ├─ favicon/          [0755] → favicons
   ├─ history/          [0777] → log files (map history logs) [optional]
   ├─ js/               [0755] → JS source files (not used for production)

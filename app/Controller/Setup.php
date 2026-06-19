@@ -1723,11 +1723,9 @@ class Setup extends Controller {
              */
             $categoryUniverseModel = Universe\AbstractUniverseModel::getNew('CategoryModel');
             $categoryUniverseModel->getById(Config::ESI_CATEGORY_STRUCTURE_ID, 0);
-            $groupsCountStructure = $categoryUniverseModel->getGroupsCount(false);
             $typesCountStructure = $categoryUniverseModel->getTypesCount(false);
 
             $categoryUniverseModel->getById(Config::ESI_CATEGORY_SHIP_ID, 0);
-            $groupsCountShip = $categoryUniverseModel->getGroupsCount(false);
             $typesCountShip = $categoryUniverseModel->getTypesCount(false);
 
             /**
@@ -1753,11 +1751,74 @@ class Setup extends Controller {
                 $universeController->clearSystemsIndex();
             }
 
-            $sum = function(int $carry, int $value) : int {
-                return $carry + $value;
-            };
+            // Page-load counts are DISPLAY-ONLY (the live total comes from each buildIndex
+            // chunk response). These are static SDE estimates so the page never calls ESI and
+            // never requires the SDE to be downloaded first. (SDE June 2026.)
+            $estSystems    = 8490;
+            $estStargates  = 13978;
+            $estWormholes  = 130;
+            $estStructures = 42;
+            $estShips      = 569;
+
+            // total stargate rows already imported (display only)
+            $stargateRowCount = 0;
+            try {
+                $stargateRes = $this->getDB('UNIVERSE')->exec('SELECT COUNT(*) `count` FROM `stargate`');
+                $stargateRowCount = (int)($stargateRes[0]['count'] ?? 0);
+            } catch (\Exception $e) {
+                // 'stargate' table not set up yet
+            }
+
+            $sdeDownloaded = (new \Exodus4D\Pathfinder\Lib\Sde\Archive())->isDownloaded();
 
             $indexInfo = [
+                'SdeDownload' => [
+                    'task' => [
+                        [
+                            'action' => 'clearIndex',
+                            'label' => 'Clear',
+                            'icon' => 'fa-trash',
+                            'btn' => 'btn-danger'
+                        ],[
+                            'action' => 'buildIndex',
+                            'label' => 'Download',
+                            'icon' => 'fa-download',
+                            'btn' => 'btn-primary'
+                        ]
+                    ],
+                    'label' => 'EVE SDE download',
+                    'countBuild' => $sdeDownloaded ? 1 : 0,
+                    'countAll' => 1,
+                    'tooltip' => 'download CCP\'s Static Data Export (~84 MB). Run this FIRST: the data imports below read from it. "Clear" deletes the downloaded files.'
+                ],
+                'System' => [
+                    'task' => [
+                        [
+                            'action' => 'buildIndex',
+                            'label' => 'Import',
+                            'icon' => 'fa-sync',
+                            'btn' => 'btn-primary'
+                        ]
+                    ],
+                    'label' => 'Systems data',
+                    'countBuild' => $systemCountAll,
+                    'countAll' => $estSystems,
+                    'tooltip' => 'import all systems (+ regions, constellations, stars, planets) from the SDE. Required before statics & the systems index. Download the SDE first. Re-click to resume if it stops.'
+                ],
+                'Stargate' => [
+                    'task' => [
+                        [
+                            'action' => 'buildIndex',
+                            'label' => 'Import',
+                            'icon' => 'fa-sync',
+                            'btn' => 'btn-primary'
+                        ]
+                    ],
+                    'label' => 'Stargates data',
+                    'countBuild' => $stargateRowCount,
+                    'countAll' => $estStargates,
+                    'tooltip' => 'import stargate connections from the SDE (import systems first!). Required for the systems neighbour index. Re-click to resume if it stops.'
+                ],
                 'Wormholes' => [
                     'task' => [
                         [
@@ -1769,8 +1830,8 @@ class Setup extends Controller {
                     ],
                     'label' => 'Wormholes data',
                     'countBuild' => $wormholeCount,
-                    'countAll' => count(Universe\GroupModel::getUniverseGroupTypes(Config::ESI_GROUP_WORMHOLE_ID)),
-                    'tooltip' => 'import all wormhole types (e.g. L031) from ESI. Runtime: ~25s'
+                    'countAll' => $estWormholes,
+                    'tooltip' => 'import all wormhole types (e.g. L031) from the SDE, incl. mass/security + scan strength.'
                 ],
                 'Structures' => [
                     'task' => [
@@ -1782,13 +1843,9 @@ class Setup extends Controller {
                         ]
                     ],
                     'label' => 'Structures data',
-                    'countBuild' => $groupsCountStructure,
-                    'countAll' => count(Universe\CategoryModel::getUniverseCategoryGroups(Config::ESI_CATEGORY_STRUCTURE_ID)),
-                    'tooltip' => 'import all structure types (e.g. Citadels) from ESI. Runtime: ~15s',
-                    'subCount' => [
-                        'countBuild' => $typesCountStructure,
-                        'countAll' => array_reduce(array_map('count', Universe\CategoryModel::getUniverseCategoryTypes(Config::ESI_CATEGORY_STRUCTURE_ID)), $sum, 0),
-                    ]
+                    'countBuild' => $typesCountStructure,
+                    'countAll' => $estStructures,
+                    'tooltip' => 'import all structure types (e.g. Citadels) from the SDE.'
                 ],
                 'Ships' => [
                     'task' => [
@@ -1800,13 +1857,9 @@ class Setup extends Controller {
                         ]
                     ],
                     'label' => 'Ships data',
-                    'countBuild' => $groupsCountShip,
-                    'countAll' => count(Universe\CategoryModel::getUniverseCategoryGroups(Config::ESI_CATEGORY_SHIP_ID)),
-                    'tooltip' => 'import all ships from ESI. Runtime: ~2min',
-                    'subCount' => [
-                        'countBuild' => $typesCountShip,
-                        'countAll' => array_reduce(array_map('count', Universe\CategoryModel::getUniverseCategoryTypes(Config::ESI_CATEGORY_SHIP_ID)), $sum, 0),
-                    ]
+                    'countBuild' => $typesCountShip,
+                    'countAll' => $estShips,
+                    'tooltip' => 'import all ship types from the SDE.'
                 ],
                 'SystemStatic' => [
                     'task' => [
