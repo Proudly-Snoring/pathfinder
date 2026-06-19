@@ -193,13 +193,18 @@ class Setup extends Controller\Controller {
                 ];
                 break;
             case 'SystemStatic':
-                $length = 300;
+                // smaller chunk than a pure DB import: each row may now trigger ESI
+                // fetches for missing systems/types (see setupSystemStaticTable()),
+                // so keep a chunk well within the request timeout.
+                $length = 50;
                 $buildInfo = $this->setupSystemStaticTable($offset, $length);
 
                 $return->offset = $buildInfo['offset'];
                 $return->countAll = $buildInfo['countAll'];
-                $return->countBuild = $buildInfo['count'];
-                $return->countBuildAll = $return->offset;
+                $return->countBuild = $buildInfo['countSaved'];
+                // progress/count reflect rows actually persisted (== value shown after reload),
+                // NOT rows scanned. Pagination/termination is driven by 'offset' (see setup.js).
+                $return->countBuildAll = $buildInfo['countBuildAll'];
                 break;
             case 'SystemNeighbour':
                 $length = 1500;
@@ -264,7 +269,7 @@ class Setup extends Controller\Controller {
      * @throws \Exception
      */
     protected function setupSystemStaticTable(int $offset = 0, int $length = 0) : array {
-        $info = ['countAll' => 0, 'countChunk' => 0, 'count' => 0, 'offset' => $offset];
+        $info = ['countAll' => 0, 'countChunk' => 0, 'count' => 0, 'countSaved' => 0, 'countBuildAll' => 0, 'offset' => $offset];
 
         /**
          * @var $systemStaticModel Model\Universe\SystemStaticModel
@@ -286,7 +291,11 @@ class Setup extends Controller\Controller {
                         $colVal = (int)$data[$col];
                         if(!in_array($colVal, $invalidIds)){
                             $relModel = $systemStaticModel->rel($col);
-                            $relModel->getById($colVal, 0);
+                            // lazily import the referenced universe record (system/type) from ESI
+                            // if it is not already in the local DB -> loadById() fetches + persists it.
+                            // (getById() alone would only check the DB and skip every row whose
+                            //  system/type has not been imported yet -> nothing gets saved)
+                            $relModel->loadById($colVal);
                             if($relModel->valid()){
                                 $systemStaticModel->$col = $relModel;
                                 $validColCount++;
@@ -302,6 +311,7 @@ class Setup extends Controller\Controller {
 
                 if($validColCount == count($cols)){
                     $systemStaticModel->save();
+                    $info['countSaved']++;
                 }
                 $systemStaticModel->reset();
 
@@ -309,6 +319,9 @@ class Setup extends Controller\Controller {
                 $info['offset']++;
             }
         }
+
+        // cumulative number of rows actually persisted (matches Setup page reload count)
+        $info['countBuildAll'] = $systemStaticModel->getRowCount();
 
         return $info;
     }

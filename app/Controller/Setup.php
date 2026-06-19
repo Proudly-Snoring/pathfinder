@@ -1819,8 +1819,9 @@ class Setup extends Controller {
                     ],
                     'label' => 'Wormhole statics data',
                     'countBuild' => $systemStaticModel->getRowCount(),
-                    'countAll' => 3772,
-                    'tooltip' => 'import all static wormholes for systems. Runtime: ~25s'
+                    // derive from the CSV (cached) so this matches the API's countAll (setupSystemStaticTable())
+                    'countAll' => count($systemStaticModel::getCSVData($systemStaticModel->getTable())),
+                    'tooltip' => 'import all static wormholes for systems. Missing systems/types are fetched from ESI on demand, so the first run can take several minutes unless the universe data was imported beforehand.'
                 ],
                 [
                     'label' => 'Build search index',

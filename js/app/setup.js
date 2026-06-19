@@ -346,9 +346,12 @@ define([
         context.target.find('.btn-progress').html('&nbsp;&nbsp;' + responseData.progress + '%').css('width', responseData.progress + '%');
 
         // send next chunk of rows -> import only
+        // NOTE: pagination is driven by 'offset' (rows scanned), not 'countBuildAll'
+        // (rows actually persisted) -> otherwise an import that legitimately skips rows
+        // would never reach countAll and loop forever.
         if(
             context.target.attr('data-action') === 'buildIndex' &&
-            responseData.countBuildAll < responseData.countAll
+            responseData.offset < responseData.countAll
         ){
             sendRequest(context.url, {
                 type: responseData.type,
