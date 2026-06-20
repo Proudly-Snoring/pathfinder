@@ -3,6 +3,11 @@
 .env.*
 .git
 .github
+.gitattributes
+.gitignore
+.dockerignore
+compose.yaml
+composer-dev.json
 conf
 letsencrypt
 logs/*

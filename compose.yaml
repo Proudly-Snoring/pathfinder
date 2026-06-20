@@ -38,6 +38,7 @@ services:
     command: ["--tcpHost", "0.0.0.0"]
     environment:
       TZ: ${TZ}
+    init: true # important for quick stop
     volumes:
       - pf_history:/var/www/html/pathfinder/history/map
     restart: unless-stopped

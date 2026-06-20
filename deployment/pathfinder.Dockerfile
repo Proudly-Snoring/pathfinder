@@ -10,13 +10,26 @@ RUN apk update && apk add --no-cache libpng-dev zeromq-dev git $PHPIZE_DEPS
 RUN docker-php-ext-install gd && docker-php-ext-install pdo_mysql
 RUN pecl install redis-5.3.7 && docker-php-ext-enable redis
 RUN pecl install channel://pecl.php.net/zmq-1.1.3 && docker-php-ext-enable zmq
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer --version=2.1.8
 
-COPY . /app
 WORKDIR /app
 
-RUN composer self-update 2.1.8
-RUN composer install --no-dev --optimize-autoloader --no-interaction
+# Deps layer: only rebuilt when composer.json / composer.lock change
+COPY composer.json composer.lock ./
+RUN --mount=type=cache,target=/tmp/composer-cache \
+  COMPOSER_CACHE_DIR=/tmp/composer-cache \
+  composer install --no-dev --no-interaction --no-progress --no-autoloader
+
+# Runtime app files only — build-only sources (js/ sass/ img/ gulpfile.js, deployment/, docs/…)
+# stay out of the image. app/ is copied last (most-edited) so the autoload dump caches best.
+COPY data ./data
+COPY favicon ./favicon
+COPY public ./public
+COPY index.php ./
+COPY app ./app
+
+RUN mkdir -p logs tmp
+RUN composer dump-autoload --no-dev --optimize
 
 # ==============================================================================
 # Assets stage: compile front-end (JS / CSS / images) with the gulp toolchain
@@ -32,8 +45,10 @@ RUN apt-get update -qq \
 WORKDIR /app
 
 # Install the node toolchain first so it caches unless package*.json change
+# npm ci needs a lockfileVersion<=1; package-lock.json here is v3 (npm 7+), which node 12's
+# npm 6 cannot `ci` -> use install (tolerant), with a cache mount to reuse downloaded tarballs
 COPY package.json package-lock.json ./
-RUN npm install
+RUN --mount=type=cache,target=/root/.npm npm install --no-audit --no-fund --prefer-offline
 
 # Build inputs: tooling + sources (app/pathfinder.ini drives the VERSION asset folder)
 COPY gulpfile.js .jshintrc ./
