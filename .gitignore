@@ -19,3 +19,11 @@ composer-dev.lock
 
 node_modules/
 vendor/
+
+# ==============================================================================
+# Generated front-end assets (built by the docker "assets" stage; see contributing.md)
+# ==============================================================================
+
+/public/css/
+/public/img/
+/public/js/

@@ -18,8 +18,9 @@ Pathfinder ships two kinds of artifacts, built by two independent toolchains:
 
 The sources in `js/`, `sass/` and `img/` are **not** served directly — only the compiled output under `public/<type>/<version>/` is.
 
-> **Note**: The built front-end assets are committed to the repository. The container image only runs `composer install` (see `deployment/pathfinder.Dockerfile`); it does **not** run Gulp.
-> So if you change anything under `js/`, `sass/` or `img/`, you must rebuild and **commit the regenerated files** under `public/` for the change to ship.
+> **Note**: The compiled assets under `public/{js,css,img}/<version>/` are **not** committed to the repository (they are git-ignored).
+> The container image rebuilds them during a dedicated `assets` build stage (see `deployment/pathfinder.Dockerfile`), so a change under `js/`, `sass/` or `img/` ships automatically — just rebuild the image.
+> You only need to run Gulp yourself for **local development** (file watcher) or to serve the app **without** the container.
 
 ## Prerequisites
 
@@ -91,19 +92,21 @@ By default the tag is `PATHFINDER.VERSION`, but you can override per-build with 
 npm run gulp production -- --tag="v2.3.0"
 ```
 
-When releasing a change to front-end code:
-- **bump `VERSION`** in `app/pathfinder.ini`,
-- Run a `production` build,
-- Commit the new `public/js/<version>/`, `public/css/<version>/` (and `public/img/<version>/` if images changed).
-Old version folders can be removed.
+- When releasing a change to front-end code, **bump `VERSION`** in `app/pathfinder.ini`.
+- The image's `assets` stage then compiles into the new `public/<type>/<version>/` folder on the next build — no asset files to commit.
+- For a non-container deployment, run a `production` build yourself so `public/` is refreshed.
 
 ### Per-build option overrides
 
-Each `default` / `production` preset can be overridden with flags (`true`/`false`). Defaults:
-- `default`:    `--jsUglify=false --jsSourcemaps=false --cssSourcemaps=false --jsGzip=false --cssGzip=false --jsBrotli=false --cssBrotli=false --imgActive=true`
-- `production`: `--jsUglify=true --jsSourcemaps=true --cssSourcemaps=true --jsGzip=true --cssGzip=true --jsBrotli=true --cssBrotli=true --imgActive=true`
+Each `default` / `production` preset can be overridden with flags. The table shows each
+flag's default value per preset:
 
-Other options: `--imgActive`, `--debug`. See `npm run gulp help` for the full list.
+| Preset       | `--jsUglify` | `--jsSourcemaps` | `--cssSourcemaps` | `--jsGzip` | `--cssGzip` | `--jsBrotli` | `--cssBrotli` | `--imgActive` |
+|--------------|:------------:|:----------------:|:-----------------:|:----------:|:-----------:|:------------:|:-------------:|:-------------:|
+| `default`    |    false     |      false       |       false       |   false    |    false    |    false     |     false     |     true      |
+| `production` |     true     |       true       |       true        |    true    |    true     |     true     |     true      |     true      |
+
+Other option: `--debug`. See `npm run gulp help` for the full list.
 
 
 ### JS linting
@@ -113,11 +116,9 @@ Fix reported issues before committing - the build prints a per-file summary tabl
 
 ## 3. Putting it together
 
-A from-scratch build of a deployable tree (for production):
+To produce a deployable tree **outside** the container, run the same steps manually:
 ```shell
 composer install --no-dev --optimize-autoloader --no-interaction
 npm install
 npm run gulp production
 ```
-
-Then commit the regenerated `public/` assets along with your source changes.

@@ -3,12 +3,12 @@
 .env.*
 .git
 .github
-.jshintrc
 conf
-gulpfile.js
 letsencrypt
 logs/*
 node_modules
-sass
+public/css
+public/img
+public/js
 tmp/*
 vendor
