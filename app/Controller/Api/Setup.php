@@ -216,8 +216,11 @@ class Setup extends Controller\Controller {
 
                 $return->offset = $buildInfo['offset'];
                 $return->countAll = $buildInfo['countAll'];
-                $return->countBuild = $buildInfo['count'];
-                $return->countBuildAll = $return->offset;
+                $return->countBuild = $buildInfo['countSaved'];
+                // progress/count reflect rows actually persisted (a stargate is skipped
+                // if its origin/destination system is not imported), NOT rows scanned.
+                // Pagination/termination is driven by 'offset' (see setup.js).
+                $return->countBuildAll = $buildInfo['countBuildAll'];
                 break;
             case 'SystemStatic':
                 // smaller chunk than a pure DB import: each row may now trigger ESI

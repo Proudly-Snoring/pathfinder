@@ -734,25 +734,26 @@ class Importer {
      * synthesize ESI's "Stargate (<destination system>)" form.
      * @param array $row
      * @param \Exodus4D\Pathfinder\Model\Universe\StargateModel $model
+     * @return bool true if a row was persisted, false if skipped
      * @throws \Exception
      */
-    protected function importStargate(array $row, $model) : void {
+    protected function importStargate(array $row, $model) : bool {
         $originId = (int)($row['solarSystemID'] ?? 0);
         $destId   = (int)($row['destination']['solarSystemID'] ?? 0);
 
         $system = $model->rel('systemId');
         $system->getById($originId, 0);
         if($system->dry()){
-            return;
+            return false;
         }
         $dest = $model->rel('destinationSystemId');
         $dest->getById($destId, 0);
         if($dest->dry()){
-            return;
+            return false;
         }
         $type = $this->ensureType((int)($row['typeID'] ?? 0));
         if($type->dry()){
-            return;
+            return false;
         }
 
         $model->getById((int)$row['_key'], 0);
@@ -766,17 +767,23 @@ class Importer {
         ], ['id', 'name', 'systemId', 'typeId', 'destinationSystemId', 'position']);
         $model->save();
         $model->reset();
+        return true;
     }
 
     /**
      * chunked stargate import for the /setup ajax loop. Systems must exist first.
+     * A stargate whose origin/destination system is not yet imported is skipped
+     * (see importStargate) -> 'countSaved' (this chunk) and 'countBuildAll'
+     * (cumulative persisted rows) report rows actually saved, NOT rows scanned,
+     * so progress can never claim 100% on skipped rows. Pagination is still
+     * driven by 'offset' (rows scanned) in setup.js.
      * @param int $offset
      * @param int $length 0 -> all
-     * @return array ['countAll','count','offset']
+     * @return array ['countAll','count','countSaved','countBuildAll','offset']
      * @throws \Exception
      */
     public function importStargates(int $offset = 0, int $length = 0) : array {
-        $info = ['countAll' => 0, 'count' => 0, 'offset' => $offset];
+        $info = ['countAll' => 0, 'count' => 0, 'countSaved' => 0, 'countBuildAll' => 0, 'offset' => $offset];
 
         $file = $this->file('mapStargates.jsonl');
         $ids = $file->ids();
@@ -790,13 +797,16 @@ class Importer {
         $slice = $length ? array_slice($ids, $offset, $length) : $ids;
         $this->transactional(function() use ($slice, $file, $model, &$info){
             foreach($slice as $id){
-                if($row = $file->read((int)$id)){
-                    $this->importStargate($row, $model);
+                if(($row = $file->read((int)$id)) && $this->importStargate($row, $model)){
+                    $info['countSaved']++;
                 }
                 $info['count']++;
                 $info['offset']++;
             }
         });
+
+        // cumulative rows actually persisted (matches the Setup page reload count)
+        $info['countBuildAll'] = $model->getRowCount();
 
         return $info;
     }
