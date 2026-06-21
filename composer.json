@@ -13,7 +13,17 @@
   ],
   "config": {
     "optimize-autoloader": true,
-    "lock": true
+    "lock": true,
+    "platform": {
+      "php": "7.2.34",
+      "ext-pdo": "7.2.34",
+      "ext-openssl": "7.2.34",
+      "ext-curl": "7.2.34",
+      "ext-json": "7.2.34",
+      "ext-mbstring": "7.2.34",
+      "ext-ctype": "7.2.34",
+      "ext-gd": "7.2.34"
+    }
   },
   "autoload": {
     "psr-4": {
@@ -35,12 +45,10 @@
     "ikkez/f3-sheet": "0.4.*",
     "xfra35/f3-cron": "1.2.*",
     "monolog/monolog": "2.3.5",
-    "swiftmailer/swiftmailer": "6.2.*",
     "league/html-to-markdown": "5.0.*",
     "cache/redis-adapter": "1.1.*",
     "cache/filesystem-adapter": "1.1.*",
     "cache/array-adapter": "1.1.*",
-    "cache/void-adapter": "1.0.*",
     "cache/namespaced-cache": "1.1.*",
     "react/socket": "1.9.*",
     "react/promise-stream": "1.3.*",

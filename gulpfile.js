@@ -42,8 +42,6 @@ let del                 = require('promised-del');
 
 let minify = composer(uglifyjs, console);
 
-sass.compiler           = require('node-sass');
-
 // == Settings ========================================================================================================
 
 // build/src directories
@@ -750,7 +748,7 @@ gulp.task('task:renameJsDest', () => {
 
 /**
  * build CSS rom SASS files
- * -> 1. node-sass
+ * -> 1. dart-sass (sass)
  *    2. autoprefixer
  */
 gulp.task('task:sass', () => {

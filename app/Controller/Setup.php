@@ -45,14 +45,7 @@ class Setup extends Controller {
         'CCP_SSO_SECRET_KEY' => [],
         'CCP_SSO_DOWNTIME' => [],
         'CCP_ESI_URL' => [],
-        'CCP_ESI_DATASOURCE' => [],
-        'SMTP_HOST' => [],
-        'SMTP_PORT' => [],
-        'SMTP_SCHEME' => [],
-        'SMTP_USER' => [],
-        'SMTP_PASS' => [],
-        'SMTP_FROM' => [],
-        'SMTP_ERROR' => []
+        'CCP_ESI_DATASOURCE' => []
     ];
 
     /**
@@ -320,7 +313,7 @@ class Setup extends Controller {
         ];
 
         // obscure some values
-        $obscureVars = ['CCP_SSO_CLIENT_ID', 'CCP_SSO_SECRET_KEY', 'SMTP_PASS'];
+        $obscureVars = ['CCP_SSO_CLIENT_ID', 'CCP_SSO_SECRET_KEY'];
 
         foreach($this->environmentVars as $var => $options){
             if( !in_array($var, $excludeVars) ){
@@ -1049,10 +1042,6 @@ class Setup extends Controller {
                 case 'send_rally_discord_enabled':
                     $label = '<i class="fab fa-fw fa-discord"></i> Rally point poke Discord';
                     $tooltip = 'If "enabled", map admins can set a Discord channel for rally point pokes.';
-                    break;
-                case 'send_rally_mail_enabled':
-                    $label = '<i class="fas fa-fw fa-envelope"></i> Rally point poke Email';
-                    $tooltip = 'If "enabled", rally point pokes can be send by Email (SMTP config + recipient address required).';
                     break;
                 default:
                     $label = 'unknown';

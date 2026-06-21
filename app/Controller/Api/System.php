@@ -78,7 +78,6 @@ class System extends Controller\AccessController {
 
             if($system->hasAccess($activeCharacter)){
                 $rallyData['pokeDesktop']   = $rallyData['pokeDesktop'] === '1';
-                $rallyData['pokeMail']      = $rallyData['pokeMail'] === '1';
                 $rallyData['pokeSlack']     = $rallyData['pokeSlack'] === '1';
                 $rallyData['pokeDiscord']   = $rallyData['pokeDiscord'] === '1';
                 $rallyData['message']       = trim($rallyData['message']);
