@@ -51,20 +51,24 @@ The resolver pin (`config.platform` php + faked exts) is **already in place from
 | ikkez/f3-cortex           | dev-master@af03 | ^1.7 (tag)   | unpin 2021 commit → tag; no PHP floor (verified)  |
 | xfra35/f3-cron            | 1.2.1           | 1.3.0        |                                                   |
 | league/html-to-markdown   | 5.0.2           | 5.1.1        | needs php ^7.2.5 ✓ (verified)                     |
-| react/socket              | 1.9.0           | 1.17.x       | socket only fully testable via socket script      |
+| react/socket              | 1.9.0           | 1.17.0       | socket only fully testable via socket script      |
 | react/promise-stream      | 1.3.0           | 1.7.0        |                                                   |
 | clue/ndjson-react         | 1.2.0           | 1.3.0        |                                                   |
-| **npm** gulp              | 4.0.2           | 5.0.1        | node ≥10.13, CommonJS ✓                            |
-| **npm** sass (dart)       | 1.62.0          | latest 1.x   | now the sole Sass compiler                         |
+| react/promise (transitive)| 2.11.0          | 3.3.0        | **major** — pulled by socket 1.17; code migration, see below |
 | **npm** gulp-rename       | 2.0.0           | 2.1.0        |                                                   |
 | **npm** ansi-colors       | 4.1.1           | 4.1.3        |                                                   |
-| **npm** node-notifier     | 10.0.0          | 10.0.1       |                                                   |
+| **npm** node-notifier     | 8.x             | 10.0.1       | loose `>=8.0.1` → pinned `^10.0.1`                 |
+
+**react/promise 2 → 3 migration (DONE).** The socket stack bump dragged `react/promise` from v2 to v3 (major). `app/Lib/Socket/AbstractSocket.php` used three v2-only constructs, now rewritten: `FulfilledPromise` → `Promise\resolve()`; `RejectedPromise(\Exception)` → `reject(\Exception)`; the final `->otherwise()` error handler → `->catch()`. v3 forbids non-`Throwable` rejection reasons, so the old "reject with an error-payload **array**" pattern now **resolves** with that array instead. Consumer impact is benign: `Setup.php`'s health-check onRejected becomes dead (its onFulfilled `else` branch already renders `task=='error'`); `Map.php`'s `$status` shows the error text instead of `''` (still non-`OK`). Runtime socket path needs manual smoke (Setup → TCP-Socket PING).
 
 **Held at current through Phase 1, then straight to latest in Phase 2 (PHP-gated):** `monolog` (2.3.5 → 3.10, **no 2.11 waypoint**), `firebase/php-jwt` (6.x → 7.1), `cache/*` adapters (1.x → 1.2).
+**Held back to Phase 3 (Node-gated) — moved here from Phase 1 after validation failed on Node 12:**
+- `gulp` (4.0.2 → 5.0.1): gulp 5 + vinyl 3 breaks the unmaintained `gulp-image-resize` (2017) image pipeline (*"async completion"*); land it with the image-toolchain overhaul.
+- `sass` (1.62.0 → latest 1.x): latest dart-sass (1.101.0) hard-requires Node ≥20.19; no meaningful Node-12-safe upgrade exists above the current 1.62.0.
 **Held back to Phase 3 (ESM/Node-gated):** `gulp-filter`, `gulp-debug`, `gulp-autoprefixer`, `gulp-imagemin`, `imagemin-webp`, `pretty-bytes`, `fancy-log`, `flat`, `uglify-es`→terser.
 **Held (no change):** `goryn-clade/pathfinder_esi` v2.1.4 — latest stable; v3 is beta only.
 
-- **Validate:** full checklist.
+- **Validate:** full checklist. Build-level: PHP `build` + `assets` Dockerfile stages both green (composer install on php:7.2.34 → 696 classes; gulp-4 assets bundle incl. images).
 
 ### Phase 2 — PHP runtime upgrade  *(gated by Decision A)*
 

@@ -99,7 +99,7 @@ abstract class AbstractSocket implements SocketInterface {
         $this->connect()
             ->then(
                 function(Socket\ConnectionInterface $connection) use ($payload, $deferred) {
-                    return (new Promise\FulfilledPromise($connection))
+                    return Promise\resolve($connection)
                         ->then($this->initWrite($payload))
                         ->then($this->initRead())
                         ->then($this->initClose($connection))
@@ -107,11 +107,9 @@ abstract class AbstractSocket implements SocketInterface {
                             function($payload) use ($deferred) {
                                 // we got valid data from socketServer -> check if $payload contains an error
                                 if(is_array($payload) && $payload['task'] == 'error'){
-                                    // ... wrap error payload in a rejectedPromise
+                                    // ... reject with the error message
                                     $deferred->reject(
-                                        new Promise\RejectedPromise(
-                                            new \Exception($payload['load'])
-                                        )
+                                        new \Exception($payload['load'])
                                     );
                                 }else{
                                     // good response
@@ -130,13 +128,14 @@ abstract class AbstractSocket implements SocketInterface {
         $this->getLoop()->run();
 
         return $deferred->promise()
-            ->otherwise(
+            ->catch(
                 // final exception handler for rejected promises -> convert to payload array
                 // -> No socket related Exceptions should be thrown down the chain
-                function(\Exception $e){
-                    return new Promise\RejectedPromise(
-                        $this->newPayload('error', $e->getMessage())
-                    );
+                // -> react/promise v3 only allows Throwable as a rejection reason, while
+                //    consumers expect an array payload, so the failure is surfaced as a
+                //    fulfilled value (the error payload) rather than re-rejected
+                function(\Throwable $e){
+                    return $this->newPayload('error', $e->getMessage());
                 });
     }
 
