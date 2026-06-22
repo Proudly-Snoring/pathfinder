@@ -1,46 +1,50 @@
 /* GULP itself */
 'use strict';
 
-let util                = require('util');
-let fs                  = require('fs');
-let ini                 = require('ini');
+import util              from 'util';
+import fs                from 'fs';
+import {fileURLToPath}   from 'url';
+import path              from 'path';
+import ini               from 'ini';
 
-let gulp                = require('gulp');
-let requirejsOptimize   = require('gulp-requirejs-optimize');
-let filter              = require('gulp-filter');
-let gulpif              = require('gulp-if');
-let jshint              = require('gulp-jshint');
-let sourcemaps          = require('gulp-sourcemaps');
-let zlib                = require('zlib');
-let gzip                = require('gulp-gzip');
-let brotli              = require('gulp-brotli');
-let uglifyjs            = require('uglify-es');
-let composer            = require('gulp-uglify/composer');
-let sass                = require('gulp-sass')(require('sass'));
-let autoprefixer        = require('gulp-autoprefixer');
-let cleanCSS            = require('gulp-clean-css');
-let imageResize         = require('gulp-image-resize');
-let imagemin            = require('gulp-imagemin');
-let imageminWebp        = require('imagemin-webp');
-let rename              = require('gulp-rename');
-let bytediff            = require('gulp-bytediff');
-let debug               = require('gulp-debug');
-let notifier            = require('node-notifier');
+import gulp              from 'gulp';
+import requirejsOptimize from 'gulp-requirejs-optimize';
+import filter            from 'gulp-filter';
+import gulpif            from 'gulp-if';
+import jshint             from 'gulp-jshint';
+import sourcemaps        from 'gulp-sourcemaps';
+import zlib              from 'zlib';
+import gzip               from 'gulp-gzip';
+import brotli             from 'gulp-brotli';
+import terser             from 'gulp-terser';
+import sassCompiler       from 'sass';
+import gulpSass           from 'gulp-sass';
+import autoprefixer       from 'gulp-autoprefixer';
+import cleanCSS           from 'gulp-clean-css';
+import sharp              from 'sharp';
+import through2           from 'through2';
+import imagemin           from 'gulp-imagemin';
+import imageminWebp       from 'imagemin-webp';
+import rename             from 'gulp-rename';
+import bytediff           from 'gulp-bytediff';
+import debug              from 'gulp-debug';
+import notifier           from 'node-notifier';
 
 // -- Helper & NPM modules ----------------------------------------------------
-let flatten             = require('flat');
-let padEnd              = require('lodash.padend');
-let merge               = require('lodash.merge');
-let minimist            = require('minimist');
-let fileExtension       = require('file-extension');
-let log                 = require('fancy-log');
-let colors              = require('ansi-colors');
-let stylish             = require('jshint-stylish');
-let Table               = require('terminal-table');
-let prettyBytes         = require('pretty-bytes');
-let del                 = require('promised-del');
+import {flatten}     from 'flat';
+import padEnd         from 'lodash.padend';
+import merge          from 'lodash.merge';
+import minimist       from 'minimist';
+import fileExtension  from 'file-extension';
+import log            from 'fancy-log';
+import colors         from 'ansi-colors';
+import stylish        from 'jshint-stylish';
+import Table          from 'terminal-table';
+import prettyBytes    from 'pretty-bytes';
+import del            from 'promised-del';
 
-let minify = composer(uglifyjs, console);
+let __dirname = path.dirname(fileURLToPath(import.meta.url));
+let sass = gulpSass(sassCompiler);
 
 // == Settings ========================================================================================================
 
@@ -101,10 +105,10 @@ let trackTable = {
     ]
 };
 
-// UglifyJS options
-// https://www.npmjs.com/package/uglify-es
+// Terser options
+// https://www.npmjs.com/package/terser
 let uglifyJsOptions = {
-    warnings: true,
+    compress: {warnings: true},
     toplevel: false,
     ecma: 8,
     nameCache: {},          // cache mangled variable and property names across multiple invocations of minify()
@@ -223,8 +227,8 @@ let imageminWebpOptions = {quality: 80};
 
 let imgResizeOptions = {
     crop : true,
-    upscale : false,
-    noProfile: true
+    upscale : false
+    // metadata/profile is stripped by default (sharp doesn't preserve it unless .withMetadata() is called)
 };
 
 colors.theme({
@@ -626,7 +630,7 @@ gulp.task('task:concatJS', () => {
             };
         }))
         .pipe(bytediff.start())
-        .pipe(gulpif(CONF.JS.UGLIFY, minify(uglifyJsOptions).on('warnings', log)))
+        .pipe(gulpif(CONF.JS.UGLIFY, terser(uglifyJsOptions)))
         .pipe(gulpif(CONF.JS.SOURCEMAPS, sourcemaps.write('.', {includeContent: false, sourceRoot: '/js'}))) // prod (minify)
         .pipe(bytediff.stop(data => {
             trackFile(data, {src: 'startSize', src_percent: 'percent', uglify: 'endSize'});
@@ -646,7 +650,7 @@ gulp.task('task:diffJS', () => {
         .pipe(debug({title: 'Copy JS src: ', showFiles: false}))
         .pipe(bytediff.start())
         .pipe(gulpif(CONF.JS.SOURCEMAPS, sourcemaps.init()))
-        .pipe(gulpif(CONF.JS.UGLIFY, minify(uglifyJsOptions)))
+        .pipe(gulpif(CONF.JS.UGLIFY, terser(uglifyJsOptions)))
         .pipe(gulpif(CONF.JS.SOURCEMAPS, sourcemaps.write('.', {includeContent: false, sourceRoot: '/js'})))
         .pipe(bytediff.stop(data => {
             trackFile(data, {src: 'startSize', src_percent: 'percent', uglify: 'endSize'});
@@ -789,10 +793,10 @@ gulp.task('task:cleanCss', () => {
 // == Image build tasks ===============================================================================================
 
 let imgWebpHandler = (config, taskName) => {
-    return gulp.src(config.src, {base: config.base, since: gulp.lastRun(taskName)})
+    return gulp.src(config.src, {base: config.base, since: gulp.lastRun(taskName), encoding: false})
         .pipe(imagemin([imageminWebp(config.options)], {verbose: true}))
         .pipe(rename({extname: '.webp'}))
-        .pipe(gulp.dest(PATH.ASSETS.DEST + '/img/' + CONF.TAG));
+        .pipe(gulp.dest(PATH.ASSETS.DEST + '/img/' + CONF.TAG, {encoding: false}));
 };
 
 gulp.task('task:imgHeadToWEBP', () => {
@@ -811,11 +815,52 @@ gulp.task('task:imgGalleryToWEBP', () => {
     }, 'task:imgGalleryToWEBP');
 });
 
+/**
+ * sharp-based replacement for the unmaintained gulp-image-resize (gm/GraphicsMagick).
+ * Mirrors its options: crop (resize-then-center-crop to exact w/h), upscale, format, quality (0-1, gm-style).
+ * @param options
+ */
+let sharpResize = options => through2.obj((file, enc, cb) => {
+    if(file.isNull() || !file.contents){
+        cb(null, file);
+        return;
+    }
+
+    let img = sharp(file.contents);
+    img.metadata().then(meta => {
+        let width = options.width;
+        let height = options.height;
+        if(!height){
+            height = options.crop ? meta.height : Math.ceil((width / meta.width) * meta.height);
+        }
+        if(!width){
+            width = options.crop ? meta.width : Math.ceil((height / meta.height) * meta.width);
+        }
+
+        let pipeline = img.resize({
+            width, height,
+            fit: (options.crop || options.cover) ? 'cover' : 'inside',
+            position: 'centre',
+            withoutEnlargement: !options.upscale
+        });
+
+        if(options.format){
+            let formatOptions = (options.quality && options.quality !== 1) ? {quality: Math.floor(options.quality * 100)} : {};
+            pipeline = pipeline.toFormat(options.format, formatOptions);
+        }
+
+        return pipeline.toBuffer();
+    }).then(buffer => {
+        file.contents = buffer;
+        cb(null, file);
+    }).catch(err => cb(err));
+});
+
 let imgResizeHandler = (config, taskName) => {
-    return gulp.src(config.src, {base: 'img', since: gulp.lastRun(taskName)})
-        .pipe(imageResize(config.options))
+    return gulp.src(config.src, {base: 'img', since: gulp.lastRun(taskName), encoding: false})
+        .pipe(sharpResize(config.options))
         .pipe(gulpif(config.rename, rename(config.rename)))
-        .pipe(gulp.dest(PATH.ASSETS.DEST + '/img/' + CONF.TAG));
+        .pipe(gulp.dest(PATH.ASSETS.DEST + '/img/' + CONF.TAG, {encoding: false}));
 };
 
 let imgResizeHeaderTasks = [];
@@ -839,8 +884,8 @@ gulp.task('task:imgHeadResize', gulp.series(
 ));
 
 gulp.task('task:imgGalleryCopy', () => {
-    return gulp.src(PATH.IMG.SRC_GALLERY, {base: 'img', since: gulp.lastRun('task:imgGalleryCopy')})
-        .pipe(gulp.dest(PATH.ASSETS.DEST + '/img/' + CONF.TAG));
+    return gulp.src(PATH.IMG.SRC_GALLERY, {base: 'img', since: gulp.lastRun('task:imgGalleryCopy'), encoding: false})
+        .pipe(gulp.dest(PATH.ASSETS.DEST + '/img/' + CONF.TAG, {encoding: false}));
 });
 
 gulp.task('task:imgGallery', gulp.series(
@@ -854,15 +899,15 @@ gulp.task('task:imgRest', () => {
         `!${PATH.IMG.SRC_HEADER}`,
         `!${PATH.IMG.SRC_GALLERY}`,
         `!${PATH.IMG.SRC_SVG}`
-    ], {base: 'img', since: gulp.lastRun('task:imgRest')})
+    ], {base: 'img', since: gulp.lastRun('task:imgRest'), encoding: false})
         .pipe(debug({title: 'Copy img "rest" dest: ', showFiles: false}))
-        .pipe(gulp.dest(PATH.ASSETS.DEST + '/img/' + CONF.TAG));
+        .pipe(gulp.dest(PATH.ASSETS.DEST + '/img/' + CONF.TAG, {encoding: false}));
 });
 
 gulp.task('task:imgSVG', () => {
-    return gulp.src(PATH.IMG.SRC_SVG, {base: 'img', since: gulp.lastRun('task:imgSVG')})
+    return gulp.src(PATH.IMG.SRC_SVG, {base: 'img', since: gulp.lastRun('task:imgSVG'), encoding: false})
         .pipe(debug({title: 'Copy img SVG dest: ', showFiles: false}))
-        .pipe(gulp.dest(PATH.ASSETS.DEST + '/img/' + CONF.TAG));
+        .pipe(gulp.dest(PATH.ASSETS.DEST + '/img/' + CONF.TAG, {encoding: false}));
 });
 
 // == Helper tasks ====================================================================================================

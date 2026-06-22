@@ -33,20 +33,13 @@ RUN composer dump-autoload --no-dev --optimize
 # Assets stage: compile front-end (JS / CSS / images) with the gulp toolchain
 # ==============================================================================
 
-FROM node:12-bullseye-slim as assets
-
-# GraphicsMagick is required by the gulp image tasks (gulp-image-resize)
-RUN apt-get update -qq \
-  && apt-get install -y --no-install-recommends graphicsmagick \
-  && rm -rf /var/lib/apt/lists/*
+FROM node:24-bullseye-slim as assets
 
 WORKDIR /app
 
 # Install the node toolchain first so it caches unless package*.json change
-# npm ci needs a lockfileVersion<=1; package-lock.json here is v3 (npm 7+), which node 12's
-# npm 6 cannot `ci` -> use install (tolerant), with a cache mount to reuse downloaded tarballs
 COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm install --no-audit --no-fund --prefer-offline
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund --prefer-offline
 
 # Build inputs: tooling + sources (app/pathfinder.ini drives the VERSION asset folder)
 COPY gulpfile.js .jshintrc ./
