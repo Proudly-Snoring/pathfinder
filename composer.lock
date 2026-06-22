@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "bde95062ff928b280fbd08b6a8077e3e",
+    "content-hash": "881403c70078a82520d947b3ae6d56c0",
     "packages": [
         {
             "name": "bcosca/fatfree-core",
@@ -521,27 +521,28 @@
         },
         {
             "name": "cache/void-adapter",
-            "version": "1.0.0",
+            "version": "1.1.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/php-cache/void-adapter.git",
-                "reference": "a0554f661cf9f1498a2afe72d077f3c35d797161"
+                "reference": "d5b51d436675f77c6e9825ffbca8b9134a036685"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/php-cache/void-adapter/zipball/a0554f661cf9f1498a2afe72d077f3c35d797161",
-                "reference": "a0554f661cf9f1498a2afe72d077f3c35d797161",
+                "url": "https://api.github.com/repos/php-cache/void-adapter/zipball/d5b51d436675f77c6e9825ffbca8b9134a036685",
+                "reference": "d5b51d436675f77c6e9825ffbca8b9134a036685",
                 "shasum": ""
             },
             "require": {
                 "cache/adapter-common": "^1.0",
                 "cache/hierarchical-cache": "^1.0",
-                "php": "^5.6 || ^7.0",
+                "php": "^5.6 || ^7.0 || ^8.0",
                 "psr/cache": "^1.0",
                 "psr/simple-cache": "^1.0"
             },
             "provide": {
-                "psr/cache-implementation": "^1.0"
+                "psr/cache-implementation": "^1.0",
+                "psr/simple-cache-implementation": "^1.0"
             },
             "require-dev": {
                 "cache/integration-tests": "^0.16",
@@ -550,7 +551,7 @@
             "type": "library",
             "extra": {
                 "branch-alias": {
-                    "dev-master": "1.0-dev"
+                    "dev-master": "1.1-dev"
                 }
             },
             "autoload": {
@@ -574,7 +575,7 @@
                 {
                     "name": "Tobias Nyholm",
                     "email": "tobias.nyholm@gmail.com",
-                    "homepage": "https://github.com/Nyholm"
+                    "homepage": "https://github.com/nyholm"
                 }
             ],
             "description": "A PSR-6 cache implementation using Void. This implementation supports tags",
@@ -586,30 +587,33 @@
                 "void"
             ],
             "support": {
-                "source": "https://github.com/php-cache/void-adapter/tree/master"
+                "source": "https://github.com/php-cache/void-adapter/tree/1.1.0"
             },
-            "time": "2017-07-16T21:09:25+00:00"
+            "time": "2020-12-14T12:17:39+00:00"
         },
         {
             "name": "caseyamcl/guzzle_retry_middleware",
-            "version": "v2.3.3",
+            "version": "v2.9.0",
             "source": {
                 "type": "git",
                 "url": "https://github.com/caseyamcl/guzzle_retry_middleware.git",
-                "reference": "a01cdf67ebea566c4edef42d5140a040fbc593b0"
+                "reference": "cbec4ce59c2dbd200a11aed19e7c26c37e50e535"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/caseyamcl/guzzle_retry_middleware/zipball/a01cdf67ebea566c4edef42d5140a040fbc593b0",
-                "reference": "a01cdf67ebea566c4edef42d5140a040fbc593b0",
+                "url": "https://api.github.com/repos/caseyamcl/guzzle_retry_middleware/zipball/cbec4ce59c2dbd200a11aed19e7c26c37e50e535",
+                "reference": "cbec4ce59c2dbd200a11aed19e7c26c37e50e535",
                 "shasum": ""
             },
             "require": {
                 "guzzlehttp/guzzle": "^6.3|^7.0",
-                "php": "^7.1"
+                "php": "^7.1|^8.0"
             },
             "require-dev": {
+                "jaschilz/php-coverage-badger": "^2.0",
                 "nesbot/carbon": "^2.0",
+                "phpstan/extension-installer": "^1.0",
+                "phpstan/phpstan": "^1.0",
                 "phpunit/phpunit": "^7.5|^8.0|^9.0",
                 "squizlabs/php_codesniffer": "^3.5"
             },
@@ -636,7 +640,7 @@
                     "role": "Developer"
                 }
             ],
-            "description": "Guzzle middleware that handles HTTP Retry-After middleware",
+            "description": "Guzzle v6+ retry middleware that handles 429/503 status codes and connection timeouts",
             "homepage": "https://github.com/caseyamcl/guzzle_retry_middleware",
             "keywords": [
                 "Guzzle",
@@ -649,9 +653,15 @@
             ],
             "support": {
                 "issues": "https://github.com/caseyamcl/guzzle_retry_middleware/issues",
-                "source": "https://github.com/caseyamcl/guzzle_retry_middleware/tree/master"
+                "source": "https://github.com/caseyamcl/guzzle_retry_middleware/tree/v2.9.0"
             },
-            "time": "2020-05-17T17:24:41+00:00"
+            "funding": [
+                {
+                    "url": "https://github.com/caseyamcl",
+                    "type": "github"
+                }
+            ],
+            "time": "2023-08-30T18:02:31+00:00"
         },
         {
             "name": "clue/ndjson-react",
@@ -2700,13 +2710,26 @@
         }
     ],
     "packages-dev": [],
-    "aliases": [],
+    "aliases": [
+        {
+            "package": "cache/void-adapter",
+            "version": "1.1.0.0",
+            "alias": "1.0.1",
+            "alias_normalized": "1.0.1.0"
+        },
+        {
+            "package": "caseyamcl/guzzle_retry_middleware",
+            "version": "2.9.0.0",
+            "alias": "2.3.3",
+            "alias_normalized": "2.3.3.0"
+        }
+    ],
     "minimum-stability": "stable",
     "stability-flags": {},
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
-        "php-64bit": ">=7.2",
+        "php-64bit": ">=8.5",
         "ext-pdo": "*",
         "ext-openssl": "*",
         "ext-curl": "*",
@@ -2717,14 +2740,14 @@
     },
     "platform-dev": {},
     "platform-overrides": {
-        "php": "7.2.34",
-        "ext-pdo": "7.2.34",
-        "ext-openssl": "7.2.34",
-        "ext-curl": "7.2.34",
-        "ext-json": "7.2.34",
-        "ext-mbstring": "7.2.34",
-        "ext-ctype": "7.2.34",
-        "ext-gd": "7.2.34"
+        "php": "8.5.3",
+        "ext-pdo": "8.5.3",
+        "ext-openssl": "8.5.3",
+        "ext-curl": "8.5.3",
+        "ext-json": "8.5.3",
+        "ext-mbstring": "8.5.3",
+        "ext-ctype": "8.5.3",
+        "ext-gd": "8.5.3"
     },
     "plugin-api-version": "2.9.0"
 }

@@ -15,14 +15,14 @@
     "optimize-autoloader": true,
     "lock": true,
     "platform": {
-      "php": "7.2.34",
-      "ext-pdo": "7.2.34",
-      "ext-openssl": "7.2.34",
-      "ext-curl": "7.2.34",
-      "ext-json": "7.2.34",
-      "ext-mbstring": "7.2.34",
-      "ext-ctype": "7.2.34",
-      "ext-gd": "7.2.34"
+      "php": "8.5.3",
+      "ext-pdo": "8.5.3",
+      "ext-openssl": "8.5.3",
+      "ext-curl": "8.5.3",
+      "ext-json": "8.5.3",
+      "ext-mbstring": "8.5.3",
+      "ext-ctype": "8.5.3",
+      "ext-gd": "8.5.3"
     }
   },
   "autoload": {
@@ -32,7 +32,7 @@
   },
   "readme": "README.md",
   "require": {
-    "php-64bit": ">=7.2",
+    "php-64bit": ">=8.5",
     "ext-pdo": "*",
     "ext-openssl": "*",
     "ext-curl": "*",
@@ -50,6 +50,8 @@
     "cache/filesystem-adapter": "1.1.*",
     "cache/array-adapter": "1.1.*",
     "cache/namespaced-cache": "1.1.*",
+    "cache/void-adapter": "1.1.0 as 1.0.1",
+    "caseyamcl/guzzle_retry_middleware": "2.9.0 as 2.3.3",
     "react/socket": "1.17.*",
     "react/promise": "^3",
     "react/promise-stream": "1.7.*",

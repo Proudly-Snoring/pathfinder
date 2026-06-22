@@ -28,7 +28,7 @@
     }
   ],
   "require": {
-    "php-64bit": ">=7.2",
+    "php-64bit": ">=8.5",
     "ext-pdo": "*",
     "ext-openssl": "*",
     "ext-curl": "*",
