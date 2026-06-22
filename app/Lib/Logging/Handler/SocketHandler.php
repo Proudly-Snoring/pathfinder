@@ -10,6 +10,7 @@ namespace Exodus4D\Pathfinder\Lib\Logging\Handler;
 
 
 use Monolog\Logger;
+use Monolog\LogRecord;
 
 class SocketHandler extends \Monolog\Handler\SocketHandler {
 
@@ -33,30 +34,18 @@ class SocketHandler extends \Monolog\Handler\SocketHandler {
     }
 
     /**
-     * overwrite default handle()
-     * -> change data structure after processor() calls and before formatter() calls
-     * @param array $record
-     * @return bool
+     * wrap the formatted record (expects the 'json' formatter) into the {task, load} envelope
+     * the receiving socket service expects, alongside this handler's meta data
+     * @param LogRecord $record
+     * @return string
      */
-    public function handle(array $record) : bool {
-        if (!$this->isHandling($record)) {
-            return false;
-        }
-
-        $record = $this->processRecord($record);
-
-        $record = [
+    protected function generateDataStream(LogRecord $record) : string {
+        return json_encode([
             'task' => 'logData',
             'load' => [
                 'meta' => $this->metaData,
-                'log' => $record
+                'log' => json_decode((string)$record->formatted, true)
             ]
-        ];
-
-        $record['formatted'] = $this->getFormatter()->format($record);
-
-        $this->write($record);
-
-        return false === $this->bubble;
+        ]);
     }
 }
