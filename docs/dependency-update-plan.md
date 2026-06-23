@@ -130,6 +130,149 @@ What landed:
 
 **Step B — guzzle 6.5 → 7 migration — deferred, not done here.** Closes the `guzzlehttp/guzzle`/`guzzlehttp/psr7` CVEs `composer audit` still flags (held since Phase 2a specifically because of esi's pin). Blocked on more than a version bump: esi's `Lib/Middleware/GuzzleRetryMiddleware` subclasses `caseyamcl/guzzle_retry_middleware`'s `GuzzleRetryMiddleware` and overrides `__construct()`, which went `final` in caseyamcl 2.6.1 (the exact issue hit in Phase 2b) — bumping caseyamcl past 2.6.0 needs that override reworked (composition instead of inheritance) before the version can move, and guzzle 6→7 itself drags `psr7` 1.x→2.x + `promises` 1.x→2.x across the vendored client/middleware/stream code. Scope unverified — needs its own grep-and-plan pass. Tracked as future work, not gating this phase.
 
+### Phase 5 — Close remaining gaps post-vendoring  *(DONE)*
+
+Re-audited 2026-06-23 now that ESI is in-tree (`app/Lib/Esi/`, no own `composer.json`). `composer`/`php`
+weren't on PATH in this shell, so PHP versions were cross-checked against `composer.lock` +
+Packagist's `p2` API instead of `composer outdated`. Two independent, unblocked tracks left; either
+can run on its own.
+
+**5a — Guzzle 6.5 → 7.x (closes Phase 4's deferred Step B).**
+
+| Package                          | Installed              | Latest   |
+|-----------------------------------|-------------------------|----------|
+| guzzlehttp/guzzle                 | 6.5.8                   | 7.12.3   |
+| guzzlehttp/psr7 (transitive)      | 1.9.1                   | 2.12.3   |
+| guzzlehttp/promises (transitive)  | 1.5.3                   | 2.5.0    |
+| psr/http-message (transitive)     | 1.1                     | 2.0      |
+| ralouphie/getallheaders (transitive) | 3.0.3                | — (folded into psr7 2.x, drops out) |
+| caseyamcl/guzzle_retry_middleware | 2.6.0 (alias `as 2.3.3`)| 2.13.0   |
+
+Everything else in `composer.json`'s direct requires (`bcosca/fatfree-core`, `ikkez/f3-cortex`,
+`ikkez/f3-sheet`, `xfra35/f3-cron`, `monolog/monolog`, `league/html-to-markdown`,
+`firebase/php-jwt`, `react/*`, `clue/ndjson-react`) is already at latest stable — confirmed against
+Packagist. `cache/*-adapter` (1.2.0/1.3.0) and the `league/flysystem` 1.1.10 it transitively pins
+also have no newer release to move to (php-cache org dormant since 2022) — same "stuck" status
+noted in step 1, unchanged.
+
+The `caseyamcl/guzzle_retry_middleware` alias is the real blocker, not guzzle itself: Phase 2b
+pinned the real installed version to **2.6.0** specifically because `__construct()` went `final`
+in caseyamcl 2.6.1, and `app/Lib/Esi/Lib/Middleware/GuzzleRetryMiddleware.php` overrides that
+constructor. Bumping past 2.6.0 needs that override reworked to composition first.
+
+1. Rework `GuzzleRetryMiddleware::__construct()` to compose caseyamcl's middleware instead of
+   subclassing/overriding its constructor.
+2. `composer require caseyamcl/guzzle_retry_middleware:^2.13 guzzlehttp/guzzle:^7.12`; drop the
+   `as 2.3.3` alias (its only purpose was satisfying the now-removed external `pathfinder_esi`
+   package's version constraint string — moot since Phase 4).
+3. Grep `app/Lib/Esi/Lib/Middleware/*.php`, `WebClient.php`, `Client/AbstractApi.php` for psr7
+   1.x-only APIs (e.g. `Stream::factory`, mutable message helpers) before assuming source-compat.
+4. Full ESI smoke test (SSO login, map/character/corp ESI calls) — every outbound HTTP call in the
+   app goes through this stack.
+
+Payoff: closes the `guzzlehttp/guzzle` / `guzzlehttp/psr7` CVEs `composer audit` has flagged since
+Phase 2a (held purely for the external esi package's pin, which no longer exists).
+
+**5a — DONE.** `GuzzleRetryMiddleware` rewritten from a subclass to a static `factory()` that builds
+the merged options + `on_retry_callback` and hands them straight to
+`\GuzzleRetry\GuzzleRetryMiddleware::factory()` (composition) — no more `__construct()` override, so
+the `final` constructor in caseyamcl ≥2.6.1 is no longer a blocker. `composer require` landed
+`caseyamcl/guzzle_retry_middleware:^2.13 guzzlehttp/guzzle:^7.12` clean (4 installs, 5 updates, 3
+removals; no alias needed anymore — dropped `as 2.3.3`, its only purpose was satisfying the
+now-removed external `pathfinder_esi` package's constraint string).
+Grepping the ESI tree for psr7 1.x-only procedural functions (removed in psr7 2.x) found 6 call
+sites needing fixes: `\GuzzleHttp\Psr7\stream_for()` → `\GuzzleHttp\Psr7\Utils::streamFor()`
+(`WebClient.php`, `Cache/CacheEntry.php`, `GuzzleCacheMiddleware.php`); `\GuzzleHttp\Psr7\parse_header()`
+→ `\GuzzleHttp\Psr7\Header::parse()` (`GuzzleCacheMiddleware.php`, `Cache/CacheEntry.php`,
+`Cache/Strategy/PrivateCacheStrategy.php`, 5 occurrences); `\GuzzleHttp\json_encode()` /
+`\GuzzleHttp\json_decode()` (guzzle's removed procedural helpers) → `\GuzzleHttp\Utils::jsonEncode()`
+/ `jsonDecode()` (`WebClient.php`, `Lib/Stream/JsonStream.php`). `composer audit` now reports **no
+security vulnerability advisories** (closes the guzzle/psr7 CVEs held since Phase 2a). Validated:
+`composer validate` clean (same pre-existing `cache/void-adapter` alias warning, not new); full
+3-stage `podman compose build` green; `/sso/requestAuthorization` 302s to `login.eveonline.com` with
+correct client_id/scopes/state (the exact path that caught the Phase 2b regression); clean container
+logs. Full SSO login round-trip + map/character/corp ESI calls with real EVE credentials are the
+user's to run manually (checklist items 4–8).
+
+**5b — npm: in-range bumps.** `npm outdated` flags three devDependencies that already exceed their
+declared semver range, so `npm install` won't move them on its own:
+
+| Package    | Installed | Latest | Call site |
+|------------|-----------|--------|-----------|
+| gulp-sass  | 5.1.0     | 6.0.1  | `gulpfile.js:47` (`gulpSass(sassCompiler)`) |
+| through2   | 4.0.2     | 5.0.3  | `gulpfile.js:823` (`sharpResize` transform, Phase 3) |
+| ini        | 1.3.8     | 6.0.0  | phantom dep flagged in step 1, now declared |
+
+Single call site each, low risk — bump directly and re-run the §5 checklist's asset build step.
+`ini` 6.x and `through2` 5.x are ESM — fine, `package.json` already declares `"type": "module"`
+since Phase 3.
+
+**5b — DONE.** All three bumped (`gulp-sass` 6.0.1, `through2` 5.0.3, `ini` 6.0.0); through2's
+`.obj`/ini's `.parse` named exports unchanged, no gulpfile.js call-site changes needed for those two.
+**Real regression found + fixed:** gulp-sass 6 (new dart-sass JS API) dropped the legacy
+behavior of implicitly adding CWD to the Sass load path — broke the one root-relative
+`@import "sass/library/select2/…"` in `sass/library/select2/theme/pathfinder/_layout.scss`
+("Can't find stylesheet to import"). Fixed by adding `loadPaths: [process.cwd()]` to `sassOptions`
+in `gulpfile.js`. Verified by diffing builds against gulp-sass 5.1.0 (no error) vs 6.0.1 (error) to
+confirm it was the bump, not a pre-existing issue; full `gulp production` clean after the fix.
+
+**5c — npm: devDependency vulnerability cleanup (build-time only, never shipped to runtime).**
+`npm audit` reports 45 advisories, 100% in devDependencies. `npm audit fix` has nothing real to
+offer: for most of them the suggested "fix" is a *downgrade* of an already-latest direct
+dependency (confirmed via `npm ls`: `gulp-imagemin@9.2.0`, `jshint@2.13.6`, `node-notifier@10.0.1`,
+`gulp-sourcemaps@3.0.0` are already the newest published releases) — i.e. there is no newer
+version, only "go back to an older, also-vulnerable one." Real fix is replacement, not a bump:
+
+- **jshint / gulp-jshint chain (high)** → migrate to ESLint. Stagnant linter, no maintained
+  alternative at the current major; this is a lint-config rewrite (`.jshintrc` → `eslint.config.js`),
+  flagged but not actioned in step 1 — still the right call.
+- **gulp-imagemin / imagemin-webp chain (high/moderate)** → drop in favor of `sharp`, which is
+  *already* a devDependency and already used by Phase 3's `sharpResize` transform
+  (`gulpfile.js:823`). Sharp natively encodes webp/png/jpeg/avif, so extending that one transform
+  to cover the imagemin-webp use case removes the entire `imagemin`/`bin-build`/`cwebp-bin`/
+  `gifsicle`/`mozjpeg`/`optipng-bin`/`got`/`execa` tree in one move.
+- **gulp-sourcemaps (moderate, via `@gulp-sourcemaps/identity-map`)** → no newer release exists at
+  the latest major; accept and monitor.
+- **requirejs ≤2.3.6 (high, prototype pollution), via `gulp-requirejs-optimize`** → no fix without
+  replacing the frontend module loader itself, which Appendix A already scoped **out** of this
+  effort. Accept and monitor; revisit only as part of the Appendix A overhaul.
+- **gulp-bytediff / gulp-util** (`fixAvailable: false`, no newer release at all) → check whether
+  `gulpfile.js` still uses either; if not, drop outright rather than carry a vuln for dead code.
+
+5a and 5b/5c are independent of each other and of Phases 1–4 — no shared gate, can land as separate
+PRs in any order.
+
+**5c — DONE.**
+- **jshint/gulp-jshint/jshint-stylish → ESLint.** New flat-config `eslint.config.js` at the repo
+  root (replaces `.jshintrc`, now deleted) mirrors the old `.jshintrc` settings (`eqeqeq`, single
+  quotes, `no-empty`, browser/jquery/node globals, the AMD/vendor-lib `predef` globals) as `warn`-level
+  rules, plus a global `ignores: ['js/lib/**']` (flat config needs this in an `ignores`-only block,
+  not a CLI negation glob — `gulp.src`'s `'!' + path` style errors under ESLint's `lintFiles`).
+  `task:hintJS` in `gulpfile.js` now runs the `ESLint` Node API (`lintFiles` + `loadFormatter('stylish')`)
+  instead of the `gulp-jshint` stream plugin — same non-blocking behavior (reports, doesn't fail the
+  build). Result: 73 warnings, 0 errors, same magnitude as the old jshint output. Also fixed
+  `deployment/pathfinder.Dockerfile`'s `COPY gulpfile.js .jshintrc ./` (would have broken the assets
+  stage once `.jshintrc` was deleted) and updated the stale "JSHint" mentions in `README.md`,
+  `docs/contributing.md`, and the login-page credits list (`public/templates/view/login.html`).
+- **gulp-imagemin/imagemin-webp → sharp.** New `sharpWebp()` `through2.obj` transform (mirrors
+  Phase 3's `sharpResize()` pattern) replaces `imagemin([imageminWebp(options)])` in `imgWebpHandler`;
+  same `{quality}` option shape carries over unchanged. Drops the entire
+  `imagemin`/`bin-build`/`cwebp-bin`/`gifsicle`/`mozjpeg`/`optipng-bin`/`got`/`execa` tree. Verified
+  output: webp files at correct dimensions/VP8 encoding via `file`, byte-identical task wiring.
+- **Vulnerability count: 45 → 8.** The jshint/imagemin replacements removed most of the
+  high/moderate advisories outright. A non-`--force` `npm audit fix` *also* fixed `requirejs`
+  (bumped to `2.3.8` inside `gulp-requirejs-optimize`'s loose dependency range — the plan's original
+  "no fix without replacing the frontend loader" turned out to be wrong; a patched requirejs existed
+  within range) plus `brace-expansion`/`minimatch`/`semver`/`es5-ext`, with no `package.json` changes
+  (lockfile-only). Verified `gulp production` still clean after.
+  **Remaining 8 (accept and monitor, confirmed dead-ends):** `gulp-sourcemaps`/`postcss`/
+  `@gulp-sourcemaps/identity-map` (moderate, fix is a major-version churn with no newer release at
+  the top); `gulp-bytediff`/`gulp-util`/`lodash.template` (high, `gulp-bytediff` confirmed still in
+  active use for the JS build-size summary table — `bytediff.start()`/`.stop()` throughout
+  `gulpfile.js` — not dead code, no newer release exists, `gulp-util`/`lodash.template` are its
+  transitives); `node-notifier`/`uuid` (moderate, suggested "fix" is downgrading `node-notifier` from
+  10.0.1 — already latest — to 6.0.0, i.e. no real fix).
+
 ## 4. Sequencing rationale
 
 Cuts before bumps (smaller surface to upgrade). Runtime-safe bumps before the runtime jump — and they double as a **PHP 8 prerequisite** (the frameworks must be 8.5-capable *before* the jump), which is why Phase 1 stays first rather than swapping with Phase 2. The aim throughout is to keep "library churn" failures separable from "language/runtime" failures (no test suite to tell them apart): Phase 1 isolates lib bumps on the old runtime, Phase 2a isolates the runtime jump with deps held, Phase 2b isolates the major-dep API churn. No throwaway intermediates — PHP-gated deps are simply *deferred* to 2b, not stepped through a 2.x version. PHP and Node tracks are independent — Phase 2 and Phase 3 can run in either order or be skipped. Every phase is its own PR gated by the same checklist, so any phase can be the stopping point.

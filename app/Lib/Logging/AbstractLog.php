@@ -163,9 +163,9 @@ abstract class AbstractLog implements LogInterface {
         };
 
         // add log processor -> remove §tempData from log
-        $processorClearTempData = function($record){
-            $record['context'] = array_diff_key($record['context'], $this->getTempData());
-            return $record;
+        $processorClearTempData = function(\Monolog\LogRecord $record){
+            // LogRecord::$context is readonly (Monolog 3) -> rebuild via with() instead of mutating in place
+            return $record->with(context: array_diff_key($record->context, $this->getTempData()));
         };
 
         // init processorConfig. IMPORTANT: first processor gets executed at the end!

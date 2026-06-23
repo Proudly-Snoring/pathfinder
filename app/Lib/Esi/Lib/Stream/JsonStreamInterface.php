@@ -14,11 +14,13 @@ use Psr\Http\Message\StreamInterface;
 interface JsonStreamInterface extends StreamInterface {
 
     /**
-     * Returns the remaining contents as mixed type
+     * Returns the remaining contents JSON-decoded
+     * -> NOT named getContents(): StreamInterface::getContents() is typed ": string" since
+     *    psr/http-message 2.0, so a decoded (non-string) return type there would violate LSP.
      *
      * @return mixed
-     * @throws \RuntimeException if unable to read or an error occurs while
+     * @throws \RuntimeException if unable to read, decode, or an error occurs while
      *     reading.
      */
-    public function getContents();
+    public function getDecodedContents();
 }

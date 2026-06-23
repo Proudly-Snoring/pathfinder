@@ -233,7 +233,7 @@ class GuzzleLogMiddleware {
                 $this->log($options, $request, $response, $reason);
             }
 
-            return \GuzzleHttp\Promise\rejection_for($reason);
+            return \GuzzleHttp\Promise\Create::rejectionFor($reason);
         };
     }
 
@@ -429,10 +429,10 @@ class GuzzleLogMiddleware {
                 if(!($body instanceof JsonStreamInterface)){
                     // ... create temp JsonStream
                     $jsonBody = new JsonStream($body);
-                    $content = $jsonBody->getContents();
+                    $content = $jsonBody->getDecodedContents();
                 }else{
                     // ... already JsonStream -> get content
-                    $content = $body->getContents();
+                    $content = $body->getDecodedContents();
                 }
 
                 // ... check if "error" key exists in content, with error message

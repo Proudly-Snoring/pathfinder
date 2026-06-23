@@ -3,15 +3,13 @@
 
 import util              from 'util';
 import fs                from 'fs';
-import {fileURLToPath}   from 'url';
-import path              from 'path';
 import ini               from 'ini';
 
 import gulp              from 'gulp';
 import requirejsOptimize from 'gulp-requirejs-optimize';
 import filter            from 'gulp-filter';
 import gulpif            from 'gulp-if';
-import jshint             from 'gulp-jshint';
+import {ESLint}          from 'eslint';
 import sourcemaps        from 'gulp-sourcemaps';
 import zlib              from 'zlib';
 import gzip               from 'gulp-gzip';
@@ -23,8 +21,6 @@ import autoprefixer       from 'gulp-autoprefixer';
 import cleanCSS           from 'gulp-clean-css';
 import sharp              from 'sharp';
 import through2           from 'through2';
-import imagemin           from 'gulp-imagemin';
-import imageminWebp       from 'imagemin-webp';
 import rename             from 'gulp-rename';
 import bytediff           from 'gulp-bytediff';
 import debug              from 'gulp-debug';
@@ -38,21 +34,16 @@ import minimist       from 'minimist';
 import fileExtension  from 'file-extension';
 import log            from 'fancy-log';
 import colors         from 'ansi-colors';
-import stylish        from 'jshint-stylish';
 import Table          from 'terminal-table';
 import prettyBytes    from 'pretty-bytes';
 import del            from 'promised-del';
 
-let __dirname = path.dirname(fileURLToPath(import.meta.url));
 let sass = gulpSass(sassCompiler);
 
 // == Settings ========================================================================================================
 
 // build/src directories
 let PATH = {
-    JS_HINT: {
-        CONF:           '/.jshintrc'
-    },
     ASSETS: {
         DEST:           './public'
     },
@@ -188,7 +179,8 @@ let CONF = {
 // -- Plugin options ----------------------------------------------------------
 let sassOptions = {
     errorLogToConsole: true,
-    outputStyle: 'compressed' // nested, expanded, compact, compressed
+    outputStyle: 'compressed', // nested, expanded, compact, compressed
+    loadPaths: [process.cwd()] // gulp-sass 6 (new dart-sass JS API) no longer adds CWD implicitly; needed for root-relative @import "sass/…"
 };
 
 let autoprefixerOptions = {
@@ -223,7 +215,7 @@ let brotliOptions = {
 
 let compressionExt = [gZipOptions.extension, brotliOptions.extension];
 
-let imageminWebpOptions = {quality: 80};
+let webpOptions = {quality: 80};
 
 let imgResizeOptions = {
     crop : true,
@@ -587,10 +579,14 @@ gulp.task('task:cleanCssDest', () => del([PATH.ASSETS.DEST + '/css/' + CONF.TAG]
 gulp.task('task:cleanImgDest', () => del([PATH.ASSETS.DEST + '/img/' + CONF.TAG]));
 
 // == Dev tasks (code analyses) =======================================================================================
-gulp.task('task:hintJS', () => {
-    return gulp.src([PATH.JS.SRC, '!' + PATH.JS.SRC_LIBS])
-        .pipe(jshint(__dirname + PATH.JS_HINT.CONF))
-        .pipe(jshint.reporter(stylish));
+gulp.task('task:hintJS', async () => {
+    let eslint = new ESLint();
+    let results = await eslint.lintFiles([PATH.JS.SRC]);
+    let formatter = await eslint.loadFormatter('stylish');
+    let resultText = formatter.format(results);
+    if(resultText){
+        log(resultText);
+    }
 });
 
 // == JS build tasks ==================================================================================================
@@ -792,9 +788,25 @@ gulp.task('task:cleanCss', () => {
 
 // == Image build tasks ===============================================================================================
 
+/**
+ * sharp-based replacement for gulp-imagemin + imagemin-webp (drops the imagemin/cwebp-bin tree)
+ * @param options
+ */
+let sharpWebp = options => through2.obj((file, enc, cb) => {
+    if(file.isNull() || !file.contents){
+        cb(null, file);
+        return;
+    }
+
+    sharp(file.contents).webp(options).toBuffer().then(buffer => {
+        file.contents = buffer;
+        cb(null, file);
+    }).catch(err => cb(err));
+});
+
 let imgWebpHandler = (config, taskName) => {
     return gulp.src(config.src, {base: config.base, since: gulp.lastRun(taskName), encoding: false})
-        .pipe(imagemin([imageminWebp(config.options)], {verbose: true}))
+        .pipe(sharpWebp(config.options))
         .pipe(rename({extname: '.webp'}))
         .pipe(gulp.dest(PATH.ASSETS.DEST + '/img/' + CONF.TAG, {encoding: false}));
 };
@@ -803,7 +815,7 @@ gulp.task('task:imgHeadToWEBP', () => {
     return imgWebpHandler({
         src: PATH.ASSETS.DEST + '/img/' + CONF.TAG + '/header/**/*.png',
         base: PATH.ASSETS.DEST + '/img/' + CONF.TAG,
-        options: imageminWebpOptions
+        options: webpOptions
     }, 'task:imgHeadToWEBP');
 });
 
@@ -811,7 +823,7 @@ gulp.task('task:imgGalleryToWEBP', () => {
     return imgWebpHandler({
         src: PATH.ASSETS.DEST + '/img/' + CONF.TAG + '/gallery/**/*.jpg',
         base: PATH.ASSETS.DEST + '/img/' + CONF.TAG,
-        options: Object.assign({}, imageminWebpOptions, {quality: 90}) // unfortunately src jpg´s are already high compressed
+        options: Object.assign({}, webpOptions, {quality: 90}) // unfortunately src jpg´s are already high compressed
     }, 'task:imgGalleryToWEBP');
 });
 

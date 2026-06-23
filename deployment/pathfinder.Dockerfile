@@ -42,7 +42,7 @@ COPY package.json package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund --prefer-offline
 
 # Build inputs: tooling + sources (app/pathfinder.ini drives the VERSION asset folder)
-COPY gulpfile.js .jshintrc ./
+COPY gulpfile.js eslint.config.js ./
 COPY app/pathfinder.ini ./app/pathfinder.ini
 COPY js ./js
 COPY sass ./sass

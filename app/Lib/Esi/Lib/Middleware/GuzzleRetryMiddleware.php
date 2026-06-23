@@ -9,10 +9,15 @@
 namespace Exodus4D\ESI\Lib\Middleware;
 
 
+use Closure;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
-class GuzzleRetryMiddleware extends \GuzzleRetry\GuzzleRetryMiddleware {
+/**
+ * Builds a configured \GuzzleRetry\GuzzleRetryMiddleware::factory() Closure.
+ * Composes the caseyamcl middleware rather than subclassing it -> __construct() went `final` in caseyamcl 2.6.1.
+ */
+class GuzzleRetryMiddleware {
 
     /**
      * default for: activate middleware "retry requests"
@@ -76,10 +81,10 @@ class GuzzleRetryMiddleware extends \GuzzleRetry\GuzzleRetryMiddleware {
     const DEFAULT_RETRY_LOG_FORMAT              = '[{attempt}/{maxRetry}] RETRY FAILED {method} {target} HTTP/{version} → {code} {phrase}';
 
     /**
-     * default options can go here for middleware
+     * default options for the middleware
      * @var array
      */
-    private $defaultOptions = [
+    private static $defaultOptions = [
         'retry_enabled'                         => self::DEFAULT_RETRY_ENABLED,
         'max_retry_attempts'                    => self::DEFAULT_RETRY_MAX_ATTEMPTS,
         'default_retry_multiplier'              => self::DEFAULT_RETRY_MULTIPLIER,
@@ -95,19 +100,18 @@ class GuzzleRetryMiddleware extends \GuzzleRetry\GuzzleRetryMiddleware {
     ];
 
     /**
-     * GuzzleRetryMiddleware constructor.
-     * @param callable $nextHandler
+     * build a configured caseyamcl GuzzleRetryMiddleware::factory() Closure
+     * @see https://packagist.org/packages/caseyamcl/guzzle_retry_middleware
      * @param array $defaultOptions
+     * @return Closure
      */
-    public function __construct(callable $nextHandler, array $defaultOptions = []){
+    public static function factory(array $defaultOptions = []) : Closure {
         if($defaultOptions['retry_log_error']){
             // add callback function for error logging
-            $defaultOptions['on_retry_callback'] = $this->retryCallback();
+            $defaultOptions['on_retry_callback'] = self::retryCallback();
         }
 
-        $this->defaultOptions = array_replace($this->defaultOptions, $defaultOptions);
-
-        parent::__construct($nextHandler, $this->defaultOptions);
+        return \GuzzleRetry\GuzzleRetryMiddleware::factory(array_replace(self::$defaultOptions, $defaultOptions));
     }
 
     /**
@@ -115,7 +119,7 @@ class GuzzleRetryMiddleware extends \GuzzleRetry\GuzzleRetryMiddleware {
      * @see https://packagist.org/packages/caseyamcl/guzzle_retry_middleware
      * @return callable
      */
-    protected function retryCallback() : callable {
+    protected static function retryCallback() : callable {
         return function(
             int $attemptNumber,
             float $delay,
@@ -138,7 +142,7 @@ class GuzzleRetryMiddleware extends \GuzzleRetry\GuzzleRetryMiddleware {
                         'delay'             => $delay
                     ];
 
-                    $message = $this->getLogMessage($options['retry_log_format'], $request, $attemptNumber, $options['max_retry_attempts'], $response);
+                    $message = self::getLogMessage($options['retry_log_format'], $request, $attemptNumber, $options['max_retry_attempts'], $response);
 
                     $log($options['retry_log_file'], 'critical', $message, $logData, 'warning');
                 }
@@ -154,7 +158,7 @@ class GuzzleRetryMiddleware extends \GuzzleRetry\GuzzleRetryMiddleware {
      * @param ResponseInterface|null $response
      * @return string
      */
-    protected function getLogMessage(string $message, RequestInterface $request, int $attemptNumber, int $maxRetryAttempts, ?ResponseInterface $response = null) : string {
+    protected static function getLogMessage(string $message, RequestInterface $request, int $attemptNumber, int $maxRetryAttempts, ?ResponseInterface $response = null) : string {
         $replace = [
             '{attempt}'     => $attemptNumber,
             '{maxRetry}'    => $maxRetryAttempts,

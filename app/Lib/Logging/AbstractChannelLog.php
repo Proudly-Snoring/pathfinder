@@ -26,9 +26,9 @@ abstract class AbstractChannelLog extends AbstractLog {
         $this->setChannelData($channelData);
 
         // add log processor -> remove $channelData from log
-        $processorClearChannelData = function($record){
-            $record['context'] = array_diff_key($record['context'], $this->getChannelData());
-            return $record;
+        $processorClearChannelData = function(\Monolog\LogRecord $record){
+            // LogRecord::$context is readonly (Monolog 3) -> rebuild via with() instead of mutating in place
+            return $record->with(context: array_diff_key($record->context, $this->getChannelData()));
         };
 
         // init processorConfig. IMPORTANT: first processor gets executed at the end!

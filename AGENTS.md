@@ -8,8 +8,6 @@ Pathfinder is a system-mapping tool for *EVE Online*.
 ## General constraints
 
 * In all interactions and commit messages, be extremely concise and sacrifice grammar for the sake of concision.
-* Only use shell commands (Bash or PowerShell) when no other tool would work.
-* When using shell commands, prefer simple commands over complex ones and several tools calls over long pipe chains (ex: avoid "cmd a & cmd b & cmd c" or "cmd a | cmd b | cmd c").
 * When writing markdown, format the tables correctly so that each column border lines up.
 
 ## Security

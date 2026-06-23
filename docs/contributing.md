@@ -107,7 +107,7 @@ Other option: `--debug`. See `npm run gulp help` for the full list.
 
 ### JS linting
 
-The `default` / watch flow runs JSHint over `js/` using `.jshintrc`.
+The `default` / watch flow runs ESLint over `js/app/` using `eslint.config.js`.
 Fix reported issues before committing - the build prints a per-file summary table (original vs. uglified/gzip/brotli sizes).
 
 ## 3. Putting it together

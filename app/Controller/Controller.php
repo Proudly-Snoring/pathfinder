@@ -621,7 +621,11 @@ class Controller {
                     $return->api['statusColor'] = $color;
                     $return->api['routes']      = $apiStatus['status'];
                 }else{
-                    $return->error[] = (new PathfinderException($apiStatus['error'], 500))->getError();
+                    // CCP retired the per-route status feed this call used to hit ('/status.json').
+                    // Not an application error -> fall back to the "ESI reachable" signal from the
+                    // (still working) server-status call instead of reporting it as one.
+                    $return->api['status']      = isset($serverStatus['error']) ? 'offline' : 'OK';
+                    $return->api['statusColor'] = isset($serverStatus['error']) ? 'red' : 'green';
                 }
 
                 if(empty($return->error)){
