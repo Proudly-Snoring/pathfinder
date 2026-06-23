@@ -43,11 +43,7 @@ composer install                                                   # development
 
 This produces `vendor/` (git-ignored).  
 The autoloader namespace `Exodus4D\Pathfinder\` maps to `app/` (PSR-4).
-
-**Developing against a local `pathfinder_esi`:** `composer-dev.json` points the ESI library at a sibling checkout (`../pathfinder_esi`) and disables the lock. Use it with the `COMPOSER` env var:
-```shell
-COMPOSER=composer-dev.json composer update
-```
+The ESI client library (`Exodus4D\ESI\`) is vendored in-tree at `app/Lib/Esi/` — edit it directly, no separate package/checkout needed.
 
 ## 2. Front-end assets (Gulp)
 

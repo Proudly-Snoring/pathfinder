@@ -36,7 +36,7 @@ Many "latest" versions below require a newer runtime. The **Runtime gate** colum
 
 **Composer — current on the stable channel (no action / nuance):**
 - `ikkez/f3-sheet` v0.4.3 — already latest.
-- `goryn-clade/pathfinder_esi` v2.1.4 — latest **stable**; only a pre-release (`v3.0.0-beta.1`, May 2026) is newer. Note: production `composer.json` uses the **goryn-clade fork**, while `composer-dev.json` points at the upstream `exodus4d/pathfinder_esi` (`dev-develop`). Picking the step-2 target means picking a fork.
+- `goryn-clade/pathfinder_esi` v2.1.4 — latest **stable**; only a pre-release (`v3.0.0-beta.1`, May 2026) is newer. Note: production `composer.json` uses the **goryn-clade fork**, while `composer-dev.json` points at the upstream `exodus4d/pathfinder_esi` (`dev-develop`). Picking the step-2 target means picking a fork. *(Historical: resolved in Phase 4 — esi vendored in-tree at `app/Lib/Esi/`, `composer-dev.json` removed.)*
 
 ---
 

@@ -7,7 +7,6 @@
 .gitignore
 .dockerignore
 compose.yaml
-composer-dev.json
 conf
 letsencrypt
 logs/*
