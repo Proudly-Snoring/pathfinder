@@ -30,5 +30,5 @@ Pathfinder is a system-mapping tool for *EVE Online*.
 - **Asset version folder:** output dir = `PATHFINDER.VERSION` in `app/pathfinder.ini` (e.g. `v2.2.4`); also the cache-buster. Bump it when shipping frontend changes (`--tag` overrides per build).
 - Compiled assets under `public/{js,css,img}/<version>/` and `.gz`/`.br` variants are **git-ignored**: the Docker `assets` stage rebuilds them - don't commit them.
 - **Container config is rendered at startup:** `deployment/entrypoint.sh` runs `envsubst` over `*.ini` + nginx templates. nginx substitution is deliberately scoped to single vars so `$uri`/`$host` survive — don't widen it.
-- Multi-stage build in `deployment/pathfinder.Dockerfile`: `build` (composer, PHP 8.5) + `assets` (Node 24 gulp) + runtime (nginx/php-fpm/supervisord).
+- Multi-stage build in `deployment/pathfinder.Dockerfile`: `build` (composer, PHP) + `assets` (Node gulp) + runtime (nginx/php-fpm/supervisord).
 - Static map/wormhole data the SDE/ESI can't supply is curated CSV in `data/`.

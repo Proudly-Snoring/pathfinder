@@ -43,7 +43,7 @@ composer install                                                   # development
 
 This produces `vendor/` (git-ignored).  
 The autoloader namespace `Exodus4D\Pathfinder\` maps to `app/` (PSR-4).
-The ESI client library (`Exodus4D\ESI\`) is vendored in-tree at `app/Lib/Esi/` — edit it directly, no separate package/checkout needed.
+The ESI client library (`Exodus4D\ESI\`) is vendored in-tree at `app/Lib/Esi/`.
 
 ## 2. Front-end assets (Gulp)
 
