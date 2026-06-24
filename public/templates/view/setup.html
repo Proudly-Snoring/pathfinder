@@ -18,7 +18,7 @@
         </div>
 
         {* Errors *}
-        <check if="{{ @errorData }}">
+        <check if="{{ isset(@errorData) && @errorData }}">
             <div class="alert alert-danger">
                 <button type="button" class="close" data-dismiss="alert" aria-label="Close"><i class="fas fa-times"></i></button>
                 <span class="txt-color txt-color-danger">({{ @errorData->code }}) {{ @errorData->status }}</span>
@@ -109,7 +109,7 @@
                                             </false>
                                         </check>
                                     </td>
-                                    <td class="text-right">{{@directoryData.chmod}}</td>
+                                    <td class="text-right">{{ isset(@directoryData.chmod) ? @directoryData.chmod : '' }}</td>
                                 </tr>
                             </repeat>
                             </tbody>
@@ -675,7 +675,7 @@
                                                 <td class="bg-color bg-color-tealDarkest text-center"></td>
                                             </tr>
                                             <repeat group="{{ @tableData.fieldConf }}" key="{{ @columnName }}" value="{{ @columnData }}" counter="{{ @countCol }}">
-                                                <check if="{{ @columnData.type }}">
+                                                <check if="{{ isset(@columnData.type) && @columnData.type }}">
                                                     {* Required colums *}
                                                     <tr class="{{ @dbInformation.info.name }}_{{ @tableName }}_col collapse">
                                                         <td class="text-right bg-color bg-color-tealDarker">{{@countCol}}.</td>
@@ -770,7 +770,7 @@
                                                         </td>
                                                     </tr>
                                                 </check>
-                                                <check if="{{ @columnData.deprecated }}">
+                                                <check if="{{ isset(@columnData.deprecated) && @columnData.deprecated }}">
                                                     {* Deprecated colums *}
                                                     <tr class="{{ @dbInformation.info.name }}_{{ @tableName }}_col collapse txt-color txt-color-yellowDark">
                                                         <td class="bg-color bg-color-tealDarker"></td>
@@ -961,7 +961,7 @@
                                                 </check>
                                             </td>
                                         </tr>
-                                        <repeat group="{{ @redisInformation.errors }}"  value="{{ @redisError }}">
+                                        <repeat group="{{ (isset(@redisInformation.errors) ? @redisInformation.errors : []) }}"  value="{{ @redisError }}">
                                             <tr>
                                                 <td colspan="2">{{ @redisError.label | raw}}: {{ @redisError.error }}</td>
                                                 <td class="text-right"><kbd class="txt-color txt-color-danger">error</kbd></td>
@@ -1056,7 +1056,7 @@
 
             <repeat group="{{ @socketInformation }}" key="{{ @socketType }}" value="{{ @socketData }}">
                 <div class="col-xs-12 col-md-6 pf-landing-pricing-panel">
-                    <div id="pf-setup-{{ @socketType }}" data-token="{{ @socketData.token }}" class="panel panel-default pricing-big" style="position: relative">
+                    <div id="pf-setup-{{ @socketType }}" data-token="{{ isset(@socketData.token) ? @socketData.token : '' }}" class="panel panel-default pricing-big" style="position: relative">
                         <div class="panel-heading text-left">
                             <h3 class="panel-title"><i class="fas {{ @socketData.icon }}"></i>&nbsp;&nbsp;{{ @socketData.label }}
                                 <check if="{{ @socketData.stats }}">
@@ -1141,9 +1141,9 @@
                                                 {{ @logData.mTimeFormat2 }}
                                             </td>
                                             <td class="bg-color bg-color-tealDarker" title="{{ @logData.remoteAddress }}" data-container="body">
-                                                <set cellValue = "{{ parse_url(@logData.remoteAddress, PHP_URL_HOST) . parse_url(@logData.remoteAddress, PHP_URL_PATH) }}" />
-                                                <check if="{{ parse_url(@logData.remoteAddress, PHP_URL_PORT) }}">
-                                                    <set cellValue = "{{ @cellValue . ':' . parse_url(@logData.remoteAddress, PHP_URL_PORT) }}" />
+                                                <set cellValue = "{{ parse_url((string)@logData.remoteAddress, PHP_URL_HOST) . parse_url((string)@logData.remoteAddress, PHP_URL_PATH) }}" />
+                                                <check if="{{ parse_url((string)@logData.remoteAddress, PHP_URL_PORT) }}">
+                                                    <set cellValue = "{{ @cellValue . ':' . parse_url((string)@logData.remoteAddress, PHP_URL_PORT) }}" />
                                                 </check>
 
                                                 <check if="{{ @logData.resourceId }}">
@@ -1327,7 +1327,7 @@
                                     <true>
                                         </tbody>
                                             </table>
-                                            <div class="panel-footer txt-color {{ @indexData.class }}">
+                                            <div class="panel-footer txt-color {{ isset(@indexData.class) ? @indexData.class : '' }}">
                                                 <h3 class="panel-title">
                                                     <check if="{{ @indexData.icon }}">
                                                         <i class="fas {{ @indexData.icon }}"></i>&nbsp;&nbsp;
@@ -1364,7 +1364,7 @@
                                                 </check>
                                             </td>
                                             <td class="col-xs-2 col-md-2 text-right">
-                                                <check if="{{ @indexData.subCount }}">
+                                                <check if="{{ isset(@indexData.subCount) && @indexData.subCount }}">
                                                     <kbd data-countAll="{{ @indexData.subCount.countAll }}">{{ @indexData.subCount.countBuild }}/{{ @indexData.subCount.countAll }}</kbd>
                                                 </check>
                                             </td>

@@ -509,7 +509,7 @@ define([
                     text: `Map (${BaseModule.Util.getObjVal(BaseModule.Util.getCurrentMapData(this._mapId), 'config.name')})`
                 },{
                     value: 'all',
-                    text: `All (New Eden)`
+                    text: 'All (New Eden)'
                 }];
 
                 $(this._iconFilterEl).editable({

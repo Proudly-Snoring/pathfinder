@@ -62,16 +62,16 @@ define([                // dependencies for this module
                 let iconLiEl = Object.assign(document.createElement('span'), {
                     className: 'fa-li'
                 });
-                iconLiEl.append(this.newIconElement([icon, 'fa-fw', 'txt-color', label ? `txt-color-${label}` : ``]));
+                iconLiEl.append(this.newIconElement([icon, 'fa-fw', 'txt-color', label ? `txt-color-${label}` : '']));
 
                 let textLiEl = Object.assign(document.createElement('span'), {
-                    textContent: `${handler} [${count}]${Number.isInteger(handlerQueueLength) ? `[${handlerQueueLength}]`: ``}`,
-                    className: label ? `pf-animation-pulse-${label}` : ``
+                    textContent: `${handler} [${count}]${Number.isInteger(handlerQueueLength) ? `[${handlerQueueLength}]`: ''}`,
+                    className: label ? `pf-animation-pulse-${label}` : ''
                 });
                 return [iconLiEl, textLiEl];
             };
 
-            let ulEl = this.queryGridItem('info').querySelector(`.fa-ul`);
+            let ulEl = this.queryGridItem('info').querySelector('.fa-ul');
             if(!ulEl){
                 ulEl = Object.assign(document.createElement('ul'), {
                     className: 'fa-ul'
@@ -85,7 +85,7 @@ define([                // dependencies for this module
                 });
 
                 ulEl.append(...liEls);
-                this.queryGridItem('info').querySelector(`code`).insertAdjacentElement('beforebegin', ulEl);
+                this.queryGridItem('info').querySelector('code').insertAdjacentElement('beforebegin', ulEl);
             }else{
                 ulEl.querySelector(`[data-handler="${handler}"]`).innerHTML = newLiContent(handler).map(el => el.outerHTML).join('');
             }
@@ -177,7 +177,7 @@ define([                // dependencies for this module
          */
         renderJson(label, data, area = 'trigger'){
             let now = new Date();
-            let codeEl = this.queryGridItem(area).querySelector(`code`);
+            let codeEl = this.queryGridItem(area).querySelector('code');
             codeEl.prepend(Object.assign(document.createElement('section'), {
                 className: this._config.highlightClassName,
                 innerHTML: `${++this._config.counter}. ${now.toLocaleTimeString('en-GB')}.${String(now.getMilliseconds()).padStart(3, '0')} ${label} \n` +
@@ -268,28 +268,28 @@ define([                // dependencies for this module
         maxCodeSections: 8,
         gridItems: {
             info: {
-                label: `handler/config`,
+                label: 'handler/config',
                 jsonConf: {
                     collapseDepth: 1,
                     maxDepth: 3
                 }
             },
             trigger: {
-                label: `trigger`,
+                label: 'trigger',
                 jsonConf: {
                     collapseDepth: 1,
                     maxDepth: 5
                 }
             },
             userData: {
-                label: `user/char data`,
+                label: 'user/char data',
                 jsonConf: {
                     collapseDepth: 1,
                     maxDepth: 8
                 }
             },
             mapData: {
-                label: `map data`,
+                label: 'map data',
                 jsonConf: {
                     collapseDepth: 2,
                     maxDepth: 8,
@@ -297,7 +297,7 @@ define([                // dependencies for this module
                 }
             },
             sortableJs: {
-                label: `drag&drop events`,
+                label: 'drag&drop events',
                 jsonConf: {
                     collapseDepth: 0,
                     maxDepth: 4,

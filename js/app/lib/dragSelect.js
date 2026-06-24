@@ -152,8 +152,8 @@ define(['app/lib/eventHandler'], (EventHandler) => {
             // limit render "reflow" bny adding all properties at once
             this._selectBox.style.cssText = `--selectBox-left: ${this._selectBoxOrigin.left}px; ` +
                 `--selectBox-top: ${this._selectBoxOrigin.top}px; ` +
-                `--selectBox-width: 1px; ` +
-                `--selectBox-height: 1px;`;
+                '--selectBox-width: 1px; ' +
+                '--selectBox-height: 1px;';
 
             this._selectBox.classList.add(this._config.activeClass);
 

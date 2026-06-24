@@ -1,4 +1,4 @@
-<check if="{{ @SESSION.SSO.ERROR }}">
+<check if="{{ isset(@SESSION.SSO.ERROR) && @SESSION.SSO.ERROR }}">
     <div class="container-fluid no-padding text-left">
         <div class="row">
             <div class="col-xs-12 col-md-8 col-md-offset-2">
@@ -15,7 +15,7 @@
 <div class="container-fluid">
     <div class="row text-center">
         <div class="col-xs-12">
-            <a class="pf-sso-login-button {{@registrationStatusButton}}" target="_self" href="{{ @tplAuthType }}" type="button" tabindex="3" title="{{@registrationStatusTitle}}">
+            <a class="pf-sso-login-button {{ isset(@registrationStatusButton) ? @registrationStatusButton : '' }}" target="_self" href="{{ @tplAuthType }}" type="button" tabindex="3" title="{{ isset(@registrationStatusTitle) ? @registrationStatusTitle : '' }}">
                 <svg>
                     <use xlink:href="#pf-svg-sso" />
                 </svg>

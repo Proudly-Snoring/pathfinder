@@ -193,7 +193,7 @@ define([
      * @returns {{}|boolean}
      */
     let getSystemDataFromMapData = (mapData, value, key = 'id') => {
-        return (Util.getObjVal(mapData, `data.systems`) || [])
+        return (Util.getObjVal(mapData, 'data.systems') || [])
             .find(systemData => systemData[key] === value) || false;
     };
 
@@ -219,7 +219,7 @@ define([
      * @returns {{}|boolean}
      */
     let getConnectionDataFromMapData = (mapData, value, key = 'id') => {
-        return (Util.getObjVal(mapData, `data.connections`) || [])
+        return (Util.getObjVal(mapData, 'data.connections') || [])
             .find(connectionData => connectionData[key] === value) || false;
     };
 

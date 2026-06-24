@@ -11,6 +11,7 @@ namespace Exodus4D\ESI\Lib\Stream;
 
 use GuzzleHttp\Psr7\StreamDecoratorTrait;
 
+#[\AllowDynamicProperties] // StreamDecoratorTrait lazily sets $this->stream via __get
 class JsonStream implements JsonStreamInterface {
 
     use StreamDecoratorTrait;

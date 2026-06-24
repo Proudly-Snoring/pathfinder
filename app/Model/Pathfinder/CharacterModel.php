@@ -249,7 +249,7 @@ class CharacterModel extends AbstractPathfinderModel {
             }
         }
 
-        if($addLogHistoryData && $characterData->log){
+        if($addLogHistoryData && !empty($characterData->log)){
             $characterData->logHistory          = $this->getLogHistoryJumps($characterData->log->system->id);
         }
 

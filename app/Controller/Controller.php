@@ -409,9 +409,9 @@ class Controller {
         $character = null;
         if($user = $this->getUser($ttl)){
             $header = self::getRequestHeaders();
-            $requestedCharacterId = (int)$header['Pf-Character'];
+            $requestedCharacterId = (int)($header['Pf-Character'] ?? 0);
             if( !$this->getF3()->get('AJAX') ){
-                $requestedCharacterId = (int)$_COOKIE['old_char_id'];
+                $requestedCharacterId = (int)($_COOKIE['old_char_id'] ?? 0);
                 if(!$requestedCharacterId){
                     $tempCharacterData = (array)$this->getF3()->get(Api\User::SESSION_KEY_TEMP_CHARACTER_DATA);
                     if((int)$tempCharacterData['ID'] > 0){
@@ -845,9 +845,9 @@ class Controller {
         return function(string $action = 'increment', string $type = 'default', $val = 0) use (&$store){
             $return = null;
             switch($action){
-                case 'increment': $store[$type]++; break;
-                case 'add': $store[$type] += (int)$val; break;
-                case 'get': $return = $store[$type] ? : null; break;
+                case 'increment': $store[$type] = ($store[$type] ?? 0) + 1; break;
+                case 'add': $store[$type] = ($store[$type] ?? 0) + (int)$val; break;
+                case 'get': $return = ($store[$type] ?? 0) ? : null; break;
                 case 'reset': unset($store[$type]); break;
             }
             return $return;

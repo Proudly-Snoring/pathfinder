@@ -15,14 +15,13 @@ import zlib              from 'zlib';
 import gzip               from 'gulp-gzip';
 import brotli             from 'gulp-brotli';
 import terser             from 'gulp-terser';
-import sassCompiler       from 'sass';
+import * as sassCompiler  from 'sass';
 import gulpSass           from 'gulp-sass';
 import autoprefixer       from 'gulp-autoprefixer';
 import cleanCSS           from 'gulp-clean-css';
 import sharp              from 'sharp';
 import through2           from 'through2';
 import rename             from 'gulp-rename';
-import bytediff           from 'gulp-bytediff';
 import debug              from 'gulp-debug';
 import notifier           from 'node-notifier';
 
@@ -39,6 +38,29 @@ import prettyBytes    from 'pretty-bytes';
 import del            from 'promised-del';
 
 let sass = gulpSass(sassCompiler);
+
+// Local replacement for the abandoned gulp-bytediff (it pulled vulnerable gulp-util/lodash.template).
+// start() records each file's size; stop(fn) computes the diff, calls fn(data) and logs the returned string.
+const bytediff = {
+    start: () => through2.obj((file, enc, cb) => {
+        file.bytediff = {startSize: file.contents ? file.contents.length : null};
+        cb(null, file);
+    }),
+    stop: formatFn => through2.obj((file, enc, cb) => {
+        if(file.bytediff && file.bytediff.startSize){
+            let endSize = file.contents.length;
+            let msg = formatFn({
+                fileName: file.path.split(/[\\/]/).pop(),
+                startSize: file.bytediff.startSize,
+                endSize: endSize,
+                savings: file.bytediff.startSize - endSize,
+                percent: endSize / file.bytediff.startSize
+            });
+            if(msg) log(msg);
+        }
+        cb(null, file);
+    })
+};
 
 // == Settings ========================================================================================================
 

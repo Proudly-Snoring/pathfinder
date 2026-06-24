@@ -1147,7 +1147,7 @@ class MapModel extends AbstractMapTrackingModel {
 
             if((bool) Config::getMapsDefaultConfig($this->typeId->name)[$defaultMapConfigKey]){
                 $config = $this->getDiscordWebHookConfig($channel);
-                if($config->slackWebHookURL){
+                if(!empty($config->slackWebHookURL)){
                     $enabled = true;
                 }
             }
@@ -1427,7 +1427,7 @@ class MapModel extends AbstractMapTrackingModel {
      * @param CharacterModel|null $characterModel
      * @return false|ConnectionModel|MapModel
      */
-    public function save(CharacterModel $characterModel = null){
+    public function save(?CharacterModel $characterModel = null){
         /**
          * @var $mapModel MapModel
          */

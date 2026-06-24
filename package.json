@@ -16,7 +16,6 @@
     "gulp": "^5.0.1",
     "gulp-autoprefixer": "^10.0.0",
     "gulp-brotli": "^3.0.0",
-    "gulp-bytediff": "1.0.x",
     "gulp-clean-css": "^4.3.0",
     "gulp-debug": "^5.0.1",
     "gulp-filter": "^10.0.0",
@@ -43,6 +42,12 @@
   },
   "scripts": {
     "gulp": "gulp"
+  },
+  "overrides": {
+    "postcss": "^8.4.31",
+    "node-notifier": {
+      "uuid": "^11.1.1"
+    }
   },
   "repository": {
     "type": "git",

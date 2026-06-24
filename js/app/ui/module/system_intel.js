@@ -103,7 +103,7 @@ define([
                 }
             };
 
-            if(str == null) return -1;
+            if(str === null || str === undefined) return -1;
             let num = charToTnt(str.charAt(0));
             let pre, curr;
 

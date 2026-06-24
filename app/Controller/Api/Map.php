@@ -74,7 +74,7 @@ class Map extends Controller\AccessController {
                     'label' => $rowData->label,
                     'class' => $rowData->class,
                     'classTab' => $rowData->classTab,
-                    'defaultConfig' => $mapsDefaultConfig[$rowData->name]
+                    'defaultConfig' => $mapsDefaultConfig[$rowData->name] ?? null
                 ];
                 $mapTypeData[$rowData->name] = $data;
             }
@@ -609,7 +609,7 @@ class Map extends Controller\AccessController {
      */
     public function updateData(\Base $f3){
         $postData = (array)$f3->get('POST');
-        $mapsData = (array)$postData['mapData'];
+        $mapsData = (array)($postData['mapData'] ?? []);
         $userDataRequired = (bool)$postData['getUserData'];
 
         $activeCharacter = $this->getCharacter();
@@ -655,7 +655,7 @@ class Map extends Controller\AccessController {
         $mapIds = (array)$postData['mapIds'];
         $getMapUserData = (bool)$postData['getMapUserData'];
         $mapTracking = (bool)$postData['mapTracking'];
-        $systemData = (array)$postData['systemData'];
+        $systemData = (array)($postData['systemData'] ?? []);
         $newSystemPositions = (array)$postData['newSystemPositions'];
         $activeCharacter = $this->getCharacter();
 
@@ -691,7 +691,7 @@ class Map extends Controller\AccessController {
 
                 // systemData -----------------------------------------------------------------------------------------
                 if(
-                    $mapId === (int)$systemData['mapId'] &&
+                    $mapId === (int)($systemData['mapId'] ?? 0) &&
                     !is_null($system = $map->getSystemById((int)$systemData['id']))
                 ){
                     // data for currently selected system

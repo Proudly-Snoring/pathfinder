@@ -42,10 +42,10 @@ define([
                     title = `in ${this._config.eveScoutUrl.hostname.replace('www.', '')} connections`;
                     break;
                 case 'hint':
-                    title += `sync connections/signatures`;
+                    title += 'sync connections/signatures';
                     break;
                 default:
-                    title = `not mapped`;
+                    title = 'not mapped';
             }
 
             return `<i class="fas fa-circle txt-color txt-color-${status}" title="${title}"></i>`;
@@ -261,7 +261,7 @@ define([
                             display: (cellData, type, rowData, meta) => {
                                 if(cellData){
                                     let wormholeData = BaseModule.Util.getObjVal(Init, `wormholes.${cellData}`);
-                                    let security = BaseModule.Util.getObjVal(wormholeData, `security`);
+                                    let security = BaseModule.Util.getObjVal(wormholeData, 'security');
                                     let typeNodes = FormElement.formatSignatureTypeSelectionData({text: `${cellData} - ${security}`}, undefined, {showWhSizeLabel: false});
                                     return [...typeNodes].reduce((acc, node) => {
                                         acc += node.outerHTML;
@@ -282,8 +282,8 @@ define([
                             display: (cellData, type, rowData, meta) => {
                                 if(cellData > 0){
                                     return `< ${cellData}h`;
-                                } else if (cellData == 0 ){
-                                    return `< 1h`;
+                                } else if (cellData === 0 ){
+                                    return '< 1h';
                                 }
                             },
                             sort: dateVal => Date.parse(dateVal)
@@ -600,10 +600,10 @@ define([
             new $.fn.dataTable.RowGroup(this._tableApi, {
                 dataSrc: 'rowGroupData.name',
                 startRender: function(rows, group, level){
-                    return `<div class="flex-row flex-between">` +
+                    return '<div class="flex-row flex-between">' +
                                 `<span class="flex-col flex-grow">${group}</span>` +
                                 `<span class="flex-col">${rows.count()}</span>` +
-                            `</div>`;
+                            '</div>';
                 }
             });
 

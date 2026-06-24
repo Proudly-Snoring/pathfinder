@@ -316,7 +316,7 @@ class CorporationModel extends AbstractPathfinderModel {
         $right = self::getNew('RightModel');
         if($rights = $right->find(['active = ? AND name IN (?)', 1, $names])){
             // get already stored rights
-            if( !$options['addInactive'] ){
+            if( empty($options['addInactive']) ){
                 $this->filter('corporationRights', ['active = ?', 1]);
             }
 

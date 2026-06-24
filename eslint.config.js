@@ -28,7 +28,7 @@ export default [
             quotes: ['warn', 'single'],
             'no-empty': 'warn',
             'no-undef': 'warn',
-            'new-cap': 'warn'
+            'new-cap': ['warn', { properties: false }]
         }
     }
 ];

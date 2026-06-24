@@ -31,7 +31,7 @@ class AbstractIterator extends \RecursiveArrayIterator {
      * @param $data
      */
     function __construct($data){
-        parent::__construct($data, \RecursiveIteratorIterator::SELF_FIRST);
+        parent::__construct((array)$data, \RecursiveIteratorIterator::SELF_FIRST);
     }
 
     /**
@@ -39,7 +39,7 @@ class AbstractIterator extends \RecursiveArrayIterator {
      * @return array
      */
     public function getData(){
-        iterator_apply($this, 'self::recursiveIterator', [$this]);
+        iterator_apply($this, [self::class, 'recursiveIterator'], [$this]);
 
         return iterator_to_array($this, true);
     }
