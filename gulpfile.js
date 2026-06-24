@@ -99,7 +99,7 @@ let trackTable = {
 // Terser options
 // https://www.npmjs.com/package/terser
 let uglifyJsOptions = {
-    compress: {warnings: true},
+    compress: {},
     toplevel: false,
     ecma: 8,
     nameCache: {},          // cache mangled variable and property names across multiple invocations of minify()

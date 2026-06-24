@@ -106,12 +106,15 @@ class GuzzleRetryMiddleware {
      * @return Closure
      */
     public static function factory(array $defaultOptions = []) : Closure {
+        // merge defaults first so partial/empty options still pick up self::$defaultOptions
+        $defaultOptions = array_replace(self::$defaultOptions, $defaultOptions);
+
         if($defaultOptions['retry_log_error']){
             // add callback function for error logging
             $defaultOptions['on_retry_callback'] = self::retryCallback();
         }
 
-        return \GuzzleRetry\GuzzleRetryMiddleware::factory(array_replace(self::$defaultOptions, $defaultOptions));
+        return \GuzzleRetry\GuzzleRetryMiddleware::factory($defaultOptions);
     }
 
     /**

@@ -46,6 +46,6 @@ class SocketHandler extends \Monolog\Handler\SocketHandler {
                 'meta' => $this->metaData,
                 'log' => json_decode((string)$record->formatted, true)
             ]
-        ]);
+        ]) . "\n";  // NDJSON: receiver's decoder delimits messages on newline
     }
 }
