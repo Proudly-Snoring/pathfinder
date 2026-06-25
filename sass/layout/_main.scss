@@ -1568,18 +1568,26 @@ table{
   border-left: none;
   border-right: none;
 
+  &.pf-wh-lt-4h{
+    border-color: $wh-lt-color-4h;
+  }
+
+  &.pf-wh-lt-1h{
+    border-color: $wh-lt-color-1h;
+  }
+
   &.pf-wh-eol{
-    border-color: $pink-dark;
+    border-color: $wh-lt-color-eol;
   }
 
   &.pf-wh-reduced{
-    background-color: $orange;
-    color: $black;
+    background: repeating-linear-gradient(90deg, $wh-mass-fresh 0 10px, $wh-mass-critical 10px 20px);
+    color: $wh-mass-critical;
   }
 
   &.pf-wh-critical{
-    background-color: $red-dark;
-    color: $black;
+    background-color: $wh-mass-critical;
+    color: $wh-mass-fresh;
   }
 
   &.pf-wh-frig{

@@ -114,6 +114,8 @@ class ConnectionModel extends AbstractMapTrackingModel {
         'wh_jump_mass_l',
         'wh_jump_mass_xl',
         // other types
+        'wh_lt_4h',
+        'wh_lt_1h',
         'wh_eol',
         'preserve_mass'
     ];
@@ -155,6 +157,25 @@ class ConnectionModel extends AbstractMapTrackingModel {
     }
 
     /**
+     * Enforce mutual exclusivity of lifetime status types.
+     * If multiple lifetime types are present, keep the newly-added one (prefer what changed
+     * over what was already set); fall back to the first candidate if nothing is new.
+     * @param array $type
+     * @return array
+     */
+    private function enforceUniqueLifetimeType(array $type): array {
+        $lifetimeTypes = ['wh_lt_4h', 'wh_lt_1h', 'wh_eol'];
+        $setLifetimeTypes = array_values(array_intersect($type, $lifetimeTypes));
+        if(count($setLifetimeTypes) > 1){
+            $currentLifetime = array_intersect((array)$this->type, $lifetimeTypes);
+            $newLifetime = array_diff($setLifetimeTypes, $currentLifetime);
+            $keep = reset($newLifetime) ?: $setLifetimeTypes[0];
+            $type = array_values(array_diff($type, array_diff($lifetimeTypes, [$keep])));
+        }
+        return $type;
+    }
+
+    /**
      * setter for connection type
      * @param $type
      * @return array
@@ -163,6 +184,8 @@ class ConnectionModel extends AbstractMapTrackingModel {
         // remove unwanted types -> they should not be send from client
         // -> reset keys! otherwise JSON format results in object and not in array
         $type = array_values(array_intersect(array_unique((array)$type), self::$connectionTypeWhitelist));
+
+        $type = $this->enforceUniqueLifetimeType($type);
 
         // set EOL timestamp
         if( !in_array('wh_eol', $type) ){

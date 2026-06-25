@@ -25,10 +25,12 @@
   &.txt-color-orangeDark    { color: $orange-dark !important; }
   &.txt-color-pink          { color: $pink !important; }
   &.txt-color-pinkDark      { color: $pinkDark !important; }
+  &.txt-color-pinkBright    { color: $pink-light !important; }
   &.txt-color-purple        { color: $purple !important; }
   &.txt-color-darken        { color: $darken !important; }
   &.txt-color-lighten       { color: $lighten !important; }
   &.txt-color-white         { color: $white !important; }
+  &.txt-color-black         { color: $black !important; }
   &.txt-color-magenta       { color: $magenta !important; }
   &.txt-color-tealLightest  { color: $teal-lightest !important; }
   &.txt-color-tealLighter   { color: $teal-lighter !important; }
@@ -39,6 +41,13 @@
   &.txt-color-gold          { color: $gold !important; }
   &.txt-color-silver        { color: $silver !important; }
   &.txt-color-bronze        { color: $bronze !important; }
+
+  &.txt-color-whLt24h       { color: $wh-lt-color-24h !important; }
+  &.txt-color-whLt4h        { color: $wh-lt-color-4h  !important; }
+  &.txt-color-whLt1h        { color: $wh-lt-color-1h  !important; }
+  &.txt-color-whEol         { color: $wh-lt-color-eol !important; }
+  &.txt-color-whMassFresh   { color: $wh-mass-fresh   !important; }
+  &.txt-color-whMassCritical{ color: $wh-mass-critical !important; }
 
   &.txt-color-primary       { color: $brand-primary !important; }
   &.txt-color-success       { color: $brand-success !important; }
