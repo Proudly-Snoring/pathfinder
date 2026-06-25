@@ -22,17 +22,17 @@ The sources in `js/`, `sass/` and `img/` are **not** served directly — only th
 > The container image rebuilds them during a dedicated `assets` build stage (see `deployment/pathfinder.Dockerfile`), so a change under `js/`, `sass/` or `img/` ships automatically — just rebuild the image.
 > You only need to run Gulp yourself for **local development** (file watcher) or to serve the app **without** the container.
 
-## Prerequisites
+
+
+## PHP dependencies (Composer)
+
+### Prerequisites
 
 - **PHP ≥ 7.2 (64-bit)** with extensions: `pdo`, `openssl`, `curl`, `json`, `mbstring`, `ctype`, `gd` (and optionally `redis`).
   See `composer.json` for the authoritative list.
 - **Composer** (the image pins 2.1.8, any recent 2.x works).
-- **Node.js 24.x + npm** (`package.json` → `engines`). The container build uses `node:24`.
-  CSS is compiled with `sass` (Dart Sass, pure JS) — no native binding, no Node-version lock.
-- **GraphicsMagick or ImageMagick** — required by the image tasks (`gulp-image-resize`), and must be on `PATH`.
-  Only needed if you run the `images` task.
 
-## 1. PHP dependencies (Composer)
+### Commands
 
 ```shell
 composer install --no-dev --optimize-autoloader --no-interaction   # production
@@ -43,9 +43,18 @@ This produces `vendor/` (git-ignored).
 The autoloader namespace `Exodus4D\Pathfinder\` maps to `app/` (PSR-4).
 The ESI client library (`Exodus4D\ESI\`) is vendored in-tree at `app/Lib/Esi/`.
 
-## 2. Front-end assets (Gulp)
 
-Reference: <https://github.com/exodus4d/pathfinder/wiki/Build-process>
+
+## Building frontend assets (Gulp)
+
+### Prerequisites
+
+- **Node.js 24.x + npm** (`package.json` → `engines`). The container build uses `node:24`.
+  CSS is compiled with `sass` (Dart Sass, pure JS) — no native binding, no Node-version lock.
+- **GraphicsMagick or ImageMagick** — required by the image tasks (`gulp-image-resize`), and must be on `PATH`.
+  Only needed if you run the `images` task.
+
+### Commands
 
 Install the Node toolchain (dev-dependencies only - the app has no runtime npm deps):
 ```shell
@@ -103,16 +112,30 @@ flag's default value per preset:
 Other option: `--debug`. See `npm run gulp help` for the full list.
 
 
+
+## Linting
+
+### PHP linting
+
+No dedicated PHP linter (phpcs / php-cs-fixer) is configured. Use PHP's built-in syntax checker:
+```shell
+php -l app/path/to/File.php                                              # single file
+find app/ -name "*.php" -exec php -l {} \; | grep -v "No syntax errors"  # all files
+```
+... or in a container:
+```shell
+podman run --rm -v "$(pwd):/app:ro" php:8.5-fpm-alpine php -l /app/app/path/to/File.php
+podman run --rm -v "$(pwd):/app:ro" php:8.5-fpm-alpine sh -c 'find /app/app -name "*.php" -exec php -l {} \; | grep -v "No syntax errors"'
+```
+
 ### JS linting
 
-The `default` / watch flow runs ESLint over `js/app/` using `eslint.config.js`.
-Fix reported issues before committing - the build prints a per-file summary table (original vs. uglified/gzip/brotli sizes).
-
-## 3. Putting it together
-
-To produce a deployable tree **outside** the container, run the same steps manually:
+The `default` / watch flow runs ESLint automatically. To run it standalone:
 ```shell
-composer install --no-dev --optimize-autoloader --no-interaction
-npm install
-npm run gulp production
+npx eslint .              # lint all JS sources (except js/lib)
+npx eslint js/app/foo.js  # lint a single file
+```
+... or use a container:
+```shell
+podman run --rm -v "$(pwd):/app" -w /app node:24-bullseye-slim npx eslint js/app/
 ```
