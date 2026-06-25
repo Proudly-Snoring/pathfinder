@@ -270,17 +270,6 @@ class User extends Controller\Controller{
                                 $user->name = $formData['name'];
                             }
 
-                            // set email
-                            if(
-                                isset($formData['email']) &&
-                                isset($formData['email_confirm']) &&
-                                !empty($formData['email']) &&
-                                !empty($formData['email_confirm']) &&
-                                $formData['email'] == $formData['email_confirm']
-                            ){
-                                $user->email = $formData['email'];
-                            }
-
                             // save/update user model
                             // this will fail if model validation fails!
                             $user->save();

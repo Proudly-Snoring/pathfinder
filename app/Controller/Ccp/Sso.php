@@ -462,7 +462,7 @@ class Sso extends Api\User{
         $decodedJwt = JWT::decode($accessToken, JWK::parseKeySet($ccpJwks));
         // check if issuer matches correct ccp supplied claim values
         // -> reject the token on mismatch (consistent with JWT::decode/JWK::parseKeySet, which throw)
-        if (strpos($decodedJwt->iss, $this->getSsoJwkClaim()) === false) {
+        if (!str_contains($decodedJwt->iss, $this->getSsoJwkClaim())) {
             self::getSSOLogger()->write(sprintf(self::ERROR_TOKEN_VERIFICATION, __METHOD__));
             throw new \UnexpectedValueException(self::ERROR_TOKEN_VERIFICATION);
         }
