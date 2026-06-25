@@ -33,6 +33,8 @@ class NullSocket extends AbstractSocket {
      * @return Promise\PromiseInterface
      */
     public function write(string $task, $load = null) : Promise\PromiseInterface {
-        return new Promise\RejectedPromise();
+        // react/promise v3 dropped RejectedPromise and forbids non-Throwable reasons;
+        // surface "no socket" as a resolved error payload (consistent with AbstractSocket)
+        return Promise\resolve($this->newPayload('error', 'socket not available'));
     }
 }

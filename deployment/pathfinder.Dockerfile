@@ -4,13 +4,11 @@
 # Build stage: composer install
 # ==============================================================================
 
-FROM php:7.2.34-fpm-alpine3.12 as build
+FROM php:8.5-fpm-alpine as build
 
-RUN apk update && apk add --no-cache libpng-dev zeromq-dev git $PHPIZE_DEPS
+RUN apk update && apk add --no-cache libpng-dev git $PHPIZE_DEPS
 RUN docker-php-ext-install gd && docker-php-ext-install pdo_mysql
-RUN pecl install redis-5.3.7 && docker-php-ext-enable redis
-RUN pecl install channel://pecl.php.net/zmq-1.1.3 && docker-php-ext-enable zmq
-RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer --version=2.1.8
+RUN curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
 
 WORKDIR /app
 
@@ -35,23 +33,16 @@ RUN composer dump-autoload --no-dev --optimize
 # Assets stage: compile front-end (JS / CSS / images) with the gulp toolchain
 # ==============================================================================
 
-FROM node:12-bullseye-slim as assets
-
-# GraphicsMagick is required by the gulp image tasks (gulp-image-resize)
-RUN apt-get update -qq \
-  && apt-get install -y --no-install-recommends graphicsmagick \
-  && rm -rf /var/lib/apt/lists/*
+FROM node:24-bullseye-slim as assets
 
 WORKDIR /app
 
 # Install the node toolchain first so it caches unless package*.json change
-# npm ci needs a lockfileVersion<=1; package-lock.json here is v3 (npm 7+), which node 12's
-# npm 6 cannot `ci` -> use install (tolerant), with a cache mount to reuse downloaded tarballs
 COPY package.json package-lock.json ./
-RUN --mount=type=cache,target=/root/.npm npm install --no-audit --no-fund --prefer-offline
+RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund --prefer-offline
 
 # Build inputs: tooling + sources (app/pathfinder.ini drives the VERSION asset folder)
-COPY gulpfile.js .jshintrc ./
+COPY gulpfile.js eslint.config.js ./
 COPY app/pathfinder.ini ./app/pathfinder.ini
 COPY js ./js
 COPY sass ./sass
@@ -64,19 +55,15 @@ RUN npm run gulp production
 # Runtime stage: nginx + php-fpm + supervisord
 # ==============================================================================
 
-FROM trafex/alpine-nginx-php7:ba1dd422
+FROM trafex/php-nginx:3.11.1
+
+# trafex/php-nginx defaults to USER nobody (rootless); this app's supervisord stack
+# (php-fpm + nginx + crond) needs root, as the previous base image ran.
+USER root
 
 RUN apk update \
   && apk add --no-cache busybox-suid sudo shadow gettext bash apache2-utils logrotate ca-certificates \
-  && apk add --no-cache php7-redis php7-pdo php7-pdo_mysql php7-fileinfo php7-event php7-zip
-
-# Replace Alpine's ancient phpredis 4.0.2 with the 5.3.7 built in the build stage.
-# Both stages are alpine/musl/php7.2 (Zend API 20170718, NTS) so the .so is ABI-compatible;
-# php7-redis is kept only for its conf.d ini that loads extension=redis.so.
-COPY --from=build /usr/local/lib/php/extensions/no-debug-non-zts-20170718/redis.so /usr/lib/php7/modules/redis.so
-
-# Fix expired DST Root CA X3 certificate
-RUN sed -i '/^mozilla\/DST_Root_CA_X3.crt$/ s/^/!/' /etc/ca-certificates.conf && update-ca-certificates
+  && apk add --no-cache php85-redis php85-pdo php85-pdo_mysql php85-fileinfo php85-zip
 
 # Symlink nginx logs to stdout/stderr for supervisord
 RUN ln -sf /dev/stdout /var/log/nginx/access.log && ln -sf /dev/stderr /var/log/nginx/error.log
@@ -88,7 +75,9 @@ COPY deployment/nginx/site.conf /etc/nginx/templateSite.conf
 RUN mkdir -p /etc/nginx/sites_enabled/
 
 # PHP-FPM pool + php.ini overrides (php.ini is rendered by entrypoint via envsubst)
-COPY deployment/php/fpm-pool.conf /etc/php7/php-fpm.d/zzz_custom.conf
+# Drop the base image's default www.conf so our pool is the only [www] (listens on :9000)
+RUN rm -f /etc/php85/php-fpm.d/www.conf
+COPY deployment/php/fpm-pool.conf /etc/php85/php-fpm.d/zzz_custom.conf
 COPY deployment/php/php.ini /etc/zzz_custom.ini
 
 # Cron + supervisord + entrypoint

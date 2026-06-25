@@ -1661,7 +1661,7 @@ define([
                         EventHandler.addEventListener(toggleGroupEl, 'click.toggleSelect', e => {
                             e.stopPropagation();
                             // check if "click" bubbles up to .btn and button is not disabled
-                            let btnEl = e.target.closest(`.btn`);
+                            let btnEl = e.target.closest('.btn');
                             if(!btnEl || btnEl.classList.contains('disabled')){
                                 return;
                             }

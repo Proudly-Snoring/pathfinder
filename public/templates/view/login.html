@@ -1,4 +1,6 @@
 {* config *}
+<set registrationStatusButton="" />
+<set registrationStatusTitle="" />
 <check if="{{ @PATHFINDER.REGISTRATION.STATUS != '1' }}">
     <set registrationStatusButton="disabled" />
     <set registrationStatusTitle= "User registration is currently disabled" />
@@ -208,7 +210,6 @@
                                 <li><i></i>Print/export client site log files for debugging</li>
                             </ul>
                         </li>
-                        <li><i></i><em>SMTP</em> support</li>
                         <li>
                             <ul class="fa-ul">
                                 <li><i></i><a target="_blank" href="//slack.com" rel="noopener"><i class="fab fa-fw fa-slack-hash"></i><em>Slack</em></a> email notifications</li>
@@ -909,7 +910,7 @@
                         <li><i></i>Code quality and automated testing</li>
                         <li>
                             <ul class="fa-ul">
-                                <li><i></i>'<em>JSHint</em>'</li>
+                                <li><i></i>'<em>ESLint</em>'</li>
                                 <li><i></i>'<em>Jasmine</em>'</li>
                             </ul>
                         </li>

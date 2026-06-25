@@ -42,7 +42,7 @@ Mapping tool for [*EvE Online*](https://www.eveonline.com).
 
  CI/CD config files (not used for production):
  ─╮
-  ├─ .jshintrc           → "JSHint" config 
+  ├─ eslint.config.js    → "ESLint" config
   ├─ composer.json       → "Composer" package definition
   ├─ gulpfile.js         → "Gulp" task config
   ├─ package.json        → "Node.js" dependency config

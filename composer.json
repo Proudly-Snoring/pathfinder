@@ -13,16 +13,27 @@
   ],
   "config": {
     "optimize-autoloader": true,
-    "lock": true
+    "lock": true,
+    "platform": {
+      "php": "8.5.3",
+      "ext-pdo": "8.5.3",
+      "ext-openssl": "8.5.3",
+      "ext-curl": "8.5.3",
+      "ext-json": "8.5.3",
+      "ext-mbstring": "8.5.3",
+      "ext-ctype": "8.5.3",
+      "ext-gd": "8.5.3"
+    }
   },
   "autoload": {
     "psr-4": {
-      "Exodus4D\\Pathfinder\\": "app/"
+      "Exodus4D\\Pathfinder\\": "app/",
+      "Exodus4D\\ESI\\": "app/Lib/Esi/"
     }
   },
   "readme": "README.md",
   "require": {
-    "php-64bit": ">=7.2",
+    "php-64bit": ">=8.5",
     "ext-pdo": "*",
     "ext-openssl": "*",
     "ext-curl": "*",
@@ -30,23 +41,24 @@
     "ext-mbstring": "*",
     "ext-ctype": "*",
     "ext-gd": "*",
-    "bcosca/fatfree-core": "3.7.*",
-    "ikkez/f3-cortex": "dev-master#af035616ae8d708776117e05603dac43835f3d9a",
+    "bcosca/fatfree-core": "3.9.*",
+    "ikkez/f3-cortex": "^1.7",
     "ikkez/f3-sheet": "0.4.*",
-    "xfra35/f3-cron": "1.2.*",
-    "monolog/monolog": "2.3.5",
-    "swiftmailer/swiftmailer": "6.2.*",
-    "league/html-to-markdown": "5.0.*",
-    "cache/redis-adapter": "1.1.*",
-    "cache/filesystem-adapter": "1.1.*",
-    "cache/array-adapter": "1.1.*",
-    "cache/void-adapter": "1.0.*",
-    "cache/namespaced-cache": "1.1.*",
-    "react/socket": "1.9.*",
-    "react/promise-stream": "1.3.*",
-    "clue/ndjson-react": "1.2.*",
-    "firebase/php-jwt": "6.*",
-    "goryn-clade/pathfinder_esi": "2.1.4"
+    "xfra35/f3-cron": "1.3.*",
+    "monolog/monolog": "3.10.*",
+    "league/html-to-markdown": "5.1.*",
+    "cache/redis-adapter": "1.2.*",
+    "cache/filesystem-adapter": "1.2.*",
+    "cache/array-adapter": "1.2.*",
+    "cache/namespaced-cache": "1.2.*",
+    "cache/void-adapter": "1.2.0 as 1.0.1",
+    "caseyamcl/guzzle_retry_middleware": "^2.13",
+    "guzzlehttp/guzzle": "^7.12",
+    "react/socket": "1.17.*",
+    "react/promise": "^3",
+    "react/promise-stream": "1.7.*",
+    "clue/ndjson-react": "1.3.*",
+    "firebase/php-jwt": "7.1.*"
   },
   "suggest": {
     "ext-redis": "Redis can be used as cache backend."

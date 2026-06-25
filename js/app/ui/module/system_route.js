@@ -486,7 +486,7 @@ define([
          * @returns {string}
          */
         getRouteDataCacheKey(mapIds, sourceName, targetName){
-            return `route_` + `${mapIds.join('_')}${sourceName}${targetName}`.hashCode();
+            return 'route_' + `${mapIds.join('_')}${sourceName}${targetName}`.hashCode();
         }
 
         /**

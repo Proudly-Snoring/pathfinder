@@ -34,7 +34,7 @@
             </check>
             <kbd>{{ @jobConf->expr }}</kbd>
         </td>
-        <td class="text-center pf-table-cell-progress" data-container="body" style="--width: {{ @jobConf->lastExecState.percent ? : 0 }};">
+        <td class="text-center pf-table-cell-progress" data-container="body" style="--width: {{ isset(@jobConf->lastExecState.percent) ? @jobConf->lastExecState.percent : 0 }};">
             <check if="{{ @jobConf->lastExecStart }}">
                 <true>
                     <set lastExecStart="{{ DateTime::createFromFormat('U.u', number_format(@jobConf->lastExecStart, 6, '.', '')) }}" />

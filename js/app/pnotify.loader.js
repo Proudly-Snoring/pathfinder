@@ -25,7 +25,7 @@ define([
                 dir1: 'up',
                 firstpos1: 32,
                 spacing1: 0,
-                context: document.querySelector(`.pf-site`)
+                context: document.querySelector('.pf-site')
             },
             addclass: 'stack-bar-bottom'
         }

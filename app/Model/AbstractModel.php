@@ -316,8 +316,8 @@ abstract class AbstractModel extends Cortex {
      */
     protected function validateField(string $key, $val) : bool {
         $valid = true;
-        if($fieldConf = $this->fieldConf[$key]){
-            if($method = $this->fieldConf[$key]['validate']){
+        if($fieldConf = ($this->fieldConf[$key] ?? null)){
+            if($method = ($fieldConf['validate'] ?? null)){
                 if( !is_string($method)){
                     $method = $key;
                 }
@@ -345,7 +345,7 @@ abstract class AbstractModel extends Cortex {
         $valid = true;
         if($colConf = $this->fieldConf[$key]){
             if(isset($colConf['belongs-to-one'])){
-                if( (is_int($val) || ctype_digit($val)) && (int)$val > 0){
+                if( (is_int($val) || (is_string($val) && ctype_digit($val))) && (int)$val > 0){
                     $valid = true;
                 }elseif( is_a($val, $colConf['belongs-to-one']) && !$val->dry() ){
                     $valid = true;
@@ -372,7 +372,7 @@ abstract class AbstractModel extends Cortex {
             switch($colConf['type']){
                 case Schema::DT_INT:
                 case Schema::DT_FLOAT:
-                    if( (is_int($val) || ctype_digit($val)) && (int)$val > 0){
+                    if( (is_int($val) || (is_string($val) && ctype_digit($val))) && (int)$val > 0){
                         $valid = true;
                     }
                     break;
@@ -814,12 +814,12 @@ abstract class AbstractModel extends Cortex {
             $filePath = self::getF3()->get('DATA') . $fileName . '.csv';
             if(is_file($filePath)){
                 $handle = @fopen($filePath, 'r');
-                $keys = array_map('lcfirst', fgetcsv($handle, 0, ';'));
+                $keys = array_map('lcfirst', fgetcsv($handle, 0, ';', '"', '\\'));
                 $keys = $rtrim($keys);
 
                 if(count($keys) > 0){
                     while (!feof($handle)) {
-                        $tableData[] = array_combine($keys, $rtrim(fgetcsv($handle, 0, ';'), count($keys)));
+                        $tableData[] = array_combine($keys, $rtrim(fgetcsv($handle, 0, ';', '"', '\\'), count($keys)));
                     }
                 }else{
                     self::getF3()->error(500, 'File could not be read');

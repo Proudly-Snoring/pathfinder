@@ -8,8 +8,6 @@ Pathfinder is a system-mapping tool for *EVE Online*.
 ## General constraints
 
 * In all interactions and commit messages, be extremely concise and sacrifice grammar for the sake of concision.
-* Only use shell commands (Bash or PowerShell) when no other tool would work.
-* When using shell commands, prefer simple commands over complex ones and several tools calls over long pipe chains (ex: avoid "cmd a & cmd b & cmd c" or "cmd a | cmd b | cmd c").
 * When writing markdown, format the tables correctly so that each column border lines up.
 
 ## Security
@@ -32,5 +30,5 @@ Pathfinder is a system-mapping tool for *EVE Online*.
 - **Asset version folder:** output dir = `PATHFINDER.VERSION` in `app/pathfinder.ini` (e.g. `v2.2.4`); also the cache-buster. Bump it when shipping frontend changes (`--tag` overrides per build).
 - Compiled assets under `public/{js,css,img}/<version>/` and `.gz`/`.br` variants are **git-ignored**: the Docker `assets` stage rebuilds them - don't commit them.
 - **Container config is rendered at startup:** `deployment/entrypoint.sh` runs `envsubst` over `*.ini` + nginx templates. nginx substitution is deliberately scoped to single vars so `$uri`/`$host` survive — don't widen it.
-- Multi-stage build in `deployment/pathfinder.Dockerfile`: `build` (composer, PHP 7.2) + `assets` (Node 12 gulp) + runtime (nginx/php-fpm/supervisord).
+- Multi-stage build in `deployment/pathfinder.Dockerfile`: `build` (composer, PHP) + `assets` (Node gulp) + runtime (nginx/php-fpm/supervisord).
 - Static map/wormhole data the SDE/ESI can't supply is curated CSV in `data/`.

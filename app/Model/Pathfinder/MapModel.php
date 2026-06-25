@@ -268,9 +268,6 @@ class MapModel extends AbstractMapTrackingModel {
             $mapData->logging->discordWebHookURLRally       = $this->discordWebHookURLRally;
             $mapData->logging->discordWebHookURLHistory     = $this->discordWebHookURLHistory;
 
-            // map mail logging
-            $mapData->logging->mailRally                    = $this->isMailSendEnabled('RALLY_SET');
-
             // map access
             $mapData->access                                = (object) [];
             $mapData->access->character                     = [];
@@ -1150,24 +1147,10 @@ class MapModel extends AbstractMapTrackingModel {
 
             if((bool) Config::getMapsDefaultConfig($this->typeId->name)[$defaultMapConfigKey]){
                 $config = $this->getDiscordWebHookConfig($channel);
-                if($config->slackWebHookURL){
+                if(!empty($config->slackWebHookURL)){
                     $enabled = true;
                 }
             }
-        }
-
-        return $enabled;
-    }
-
-    /**
-     * check if "E-Mail" Log is enabled for this map
-     * @param string $type
-     * @return bool
-     */
-    public function isMailSendEnabled(string $type) : bool{
-        $enabled = false;
-        if((bool) Config::getMapsDefaultConfig($this->typeId->name)['send_rally_mail_enabled']){
-            $enabled = Config::isValidSMTPConfig($this->getSMTPConfig($type));
         }
 
         return $enabled;
@@ -1228,19 +1211,6 @@ class MapModel extends AbstractMapTrackingModel {
         if($channel && $this->exists($channel) && !empty($this->$channel)){
             $config->slackWebHookURL = $this->$channel . '/slack';
         }
-        return $config;
-    }
-
-    /**
-     * get Config for SMTP connection and recipient address
-     * @param string $type
-     * @param bool $addJson
-     * @return \stdClass
-     */
-    public function getSMTPConfig(string $type, bool $addJson = true) : \stdClass {
-        $config = Config::getSMTPConfig();
-        $config->to = Config::getNotificationMail($type);
-        $config->addJson = $addJson;
         return $config;
     }
 
@@ -1457,7 +1427,7 @@ class MapModel extends AbstractMapTrackingModel {
      * @param CharacterModel|null $characterModel
      * @return false|ConnectionModel|MapModel
      */
-    public function save(CharacterModel $characterModel = null){
+    public function save(?CharacterModel $characterModel = null){
         /**
          * @var $mapModel MapModel
          */

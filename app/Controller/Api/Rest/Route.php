@@ -334,7 +334,7 @@ class Route extends AbstractRestController {
             }
 
             // fill "jumpArray" data ----------------------------------------------------------------------------------
-            if( !is_array($this->jumpArray[$systemId]) ){
+            if( !is_array($this->jumpArray[$systemId] ?? null) ){
                 $this->jumpArray[$systemId] = [];
             }
             $this->jumpArray[$systemId] = array_merge((array)$row['jumpNodes'], $this->jumpArray[$systemId]);
@@ -733,7 +733,10 @@ class Route extends AbstractRestController {
         ];
 
         $keyParts += $filterData;
-        return 'route_' . hash('md5', implode('_', $keyParts));
+        return 'route_' . hash('md5', implode('_', array_map(
+            static fn($part) => is_array($part) ? implode('-', $part) : $part,
+            $keyParts
+        )));
     }
 
     /**
@@ -771,7 +774,7 @@ class Route extends AbstractRestController {
                 $mapData = array_flip( array_map('intval', $mapData) );
 
                 // check map access (filter requested mapIDs and format) ----------------------------------------------
-                array_walk($mapData, function(&$item, &$key, $data){
+                array_walk($mapData, function(&$item, $key, $data){
                     /**
                      * @var Pathfinder\MapModel $data[0]
                      */
@@ -801,17 +804,17 @@ class Route extends AbstractRestController {
 
                 // search route with filter options
                 $filterData = [
-                    'stargates'             => (bool) $routeData['stargates'],
-                    'jumpbridges'           => (bool) $routeData['jumpbridges'],
-                    'wormholes'             => (bool) $routeData['wormholes'],
-                    'wormholesReduced'      => (bool) $routeData['wormholesReduced'],
-                    'wormholesCritical'     => (bool) $routeData['wormholesCritical'],
-                    'wormholesEOL'          => (bool) $routeData['wormholesEOL'],
-                    'wormholesThera'        => (bool) $routeData['wormholesThera'],
-                    'wormholesSizeMin'      => (string) $routeData['wormholesSizeMin'],
-                    'excludeTypes'          => (array) $routeData['excludeTypes'],
-                    'endpointsBubble'       => (bool) $routeData['endpointsBubble'],
-                    'flag'                  => $routeData['flag']
+                    'stargates'             => (bool) ($routeData['stargates'] ?? false),
+                    'jumpbridges'           => (bool) ($routeData['jumpbridges'] ?? false),
+                    'wormholes'             => (bool) ($routeData['wormholes'] ?? false),
+                    'wormholesReduced'      => (bool) ($routeData['wormholesReduced'] ?? false),
+                    'wormholesCritical'     => (bool) ($routeData['wormholesCritical'] ?? false),
+                    'wormholesEOL'          => (bool) ($routeData['wormholesEOL'] ?? false),
+                    'wormholesThera'        => (bool) ($routeData['wormholesThera'] ?? false),
+                    'wormholesSizeMin'      => (string) ($routeData['wormholesSizeMin'] ?? ''),
+                    'excludeTypes'          => (array) ($routeData['excludeTypes'] ?? []),
+                    'endpointsBubble'       => (bool) ($routeData['endpointsBubble'] ?? false),
+                    'flag'                  => $routeData['flag'] ?? null
                 ];
 
                 $returnRoutData = [

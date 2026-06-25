@@ -962,7 +962,7 @@ define([
                     }
                 });
             }else{
-                reject(new Error(`drawConnection(): connection must be instanceof jsPlumb.Connection`));
+                reject(new Error('drawConnection(): connection must be instanceof jsPlumb.Connection'));
             }
         }
     });
@@ -1622,7 +1622,7 @@ define([
                 resolve(payloadDrawSystem);
             }
         }else{
-            reject(new Error(`drawSystem() failed. Invalid systemData`));
+            reject(new Error('drawSystem() failed. Invalid systemData'));
         }
     });
 
@@ -1693,7 +1693,7 @@ define([
      */
     let saveConnection = (connection, disableAutoScope = false) => new Promise((resolve, reject) => {
         if(!(connection instanceof jsPlumb.Connection)){
-            reject(new Error(`saveConnection(): connection must be instanceof jsPlumb.Connection`));
+            reject(new Error('saveConnection(): connection must be instanceof jsPlumb.Connection'));
         }
 
         connection.addType('state_process');
@@ -1740,14 +1740,14 @@ define([
                 }else{
                     // some save errors
                     payload.context.map.deleteConnection(payload.context.connection, {fireEvent: false});
-                    reject(new Error(`saveConnection(): response error`));
+                    reject(new Error('saveConnection(): response error'));
                 }
             },
             payload => {
                 // remove this connection from map
                 payload.context.map.deleteConnection(payload.context.connection, {fireEvent: false});
                 Util.handleAjaxErrorResponse(payload);
-                reject(new Error(`saveConnection(): request error`));
+                reject(new Error('saveConnection(): request error'));
             }
         );
     });

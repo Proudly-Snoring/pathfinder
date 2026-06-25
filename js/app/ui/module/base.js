@@ -286,7 +286,7 @@ define([
             if(sourceName && targetName){
                 // names can be "undefined" in case system is currently in drag/drop state
                 // sort() is important -> ignore direction
-                key = `con_` + `${ [String(sourceName).toLowerCase(), String(targetName).toLowerCase()].sort() }`.hashCode();
+                key = 'con_' + `${ [String(sourceName).toLowerCase(), String(targetName).toLowerCase()].sort() }`.hashCode();
             }
             return key;
         }

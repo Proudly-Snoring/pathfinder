@@ -812,7 +812,7 @@ define([
         initYoutube();
 
         // draw header logo
-        document.querySelector(`.logo-ploygon-top-right`).addEventListener('animationend', () => {
+        document.querySelector('.logo-ploygon-top-right').addEventListener('animationend', () => {
             HeaderLogin.init();
         });
     });

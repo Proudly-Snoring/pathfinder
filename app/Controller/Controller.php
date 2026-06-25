@@ -409,9 +409,9 @@ class Controller {
         $character = null;
         if($user = $this->getUser($ttl)){
             $header = self::getRequestHeaders();
-            $requestedCharacterId = (int)$header['Pf-Character'];
+            $requestedCharacterId = (int)($header['Pf-Character'] ?? 0);
             if( !$this->getF3()->get('AJAX') ){
-                $requestedCharacterId = (int)$_COOKIE['old_char_id'];
+                $requestedCharacterId = (int)($_COOKIE['old_char_id'] ?? 0);
                 if(!$requestedCharacterId){
                     $tempCharacterData = (array)$this->getF3()->get(Api\User::SESSION_KEY_TEMP_CHARACTER_DATA);
                     if((int)$tempCharacterData['ID'] > 0){
@@ -621,7 +621,11 @@ class Controller {
                     $return->api['statusColor'] = $color;
                     $return->api['routes']      = $apiStatus['status'];
                 }else{
-                    $return->error[] = (new PathfinderException($apiStatus['error'], 500))->getError();
+                    // CCP retired the per-route status feed this call used to hit ('/status.json').
+                    // Not an application error -> fall back to the "ESI reachable" signal from the
+                    // (still working) server-status call instead of reporting it as one.
+                    $return->api['status']      = isset($serverStatus['error']) ? 'offline' : 'OK';
+                    $return->api['statusColor'] = isset($serverStatus['error']) ? 'red' : 'green';
                 }
 
                 if(empty($return->error)){
@@ -841,9 +845,9 @@ class Controller {
         return function(string $action = 'increment', string $type = 'default', $val = 0) use (&$store){
             $return = null;
             switch($action){
-                case 'increment': $store[$type]++; break;
-                case 'add': $store[$type] += (int)$val; break;
-                case 'get': $return = $store[$type] ? : null; break;
+                case 'increment': $store[$type] = ($store[$type] ?? 0) + 1; break;
+                case 'add': $store[$type] = ($store[$type] ?? 0) + (int)$val; break;
+                case 'get': $return = ($store[$type] ?? 0) ? : null; break;
                 case 'reset': unset($store[$type]); break;
             }
             return $return;

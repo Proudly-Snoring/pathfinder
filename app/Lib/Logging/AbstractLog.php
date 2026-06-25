@@ -163,9 +163,9 @@ abstract class AbstractLog implements LogInterface {
         };
 
         // add log processor -> remove §tempData from log
-        $processorClearTempData = function($record){
-            $record['context'] = array_diff_key($record['context'], $this->getTempData());
-            return $record;
+        $processorClearTempData = function(\Monolog\LogRecord $record){
+            // LogRecord::$context is readonly (Monolog 3) -> rebuild via with() instead of mutating in place
+            return $record->with(context: array_diff_key($record->context, $this->getTempData()));
         };
 
         // init processorConfig. IMPORTANT: first processor gets executed at the end!
@@ -236,7 +236,7 @@ abstract class AbstractLog implements LogInterface {
      * @param \stdClass|null $handlerParams
      * @return LogInterface
      */
-    public function addHandler(string $handlerKey, string $formatterKey = null, \stdClass $handlerParams = null) : LogInterface {
+    public function addHandler(string $handlerKey, ?string $formatterKey = null, ?\stdClass $handlerParams = null) : LogInterface {
         if(!$this->hasHandlerKey($handlerKey)){
             $this->handlerConfig[$handlerKey] = $formatterKey;
             // add more configuration params for the new handler
@@ -279,8 +279,6 @@ abstract class AbstractLog implements LogInterface {
         if($this->hasHandlerKey($handlerKey)){
             switch($handlerKey){
                 case 'stream': $params = $this->getHandlerParamsStream();
-                    break;
-                case 'mail': $params = $this->getHandlerParamsMail();
                     break;
                 case 'socket': $params = $this->getHandlerParamsSocket();
                     break;
@@ -492,69 +490,6 @@ abstract class AbstractLog implements LogInterface {
             $params[] = Logger::toMonologLevel($this->getLevel());  // min level that is handled;
             $params[] = true;                                       // bubble
             $params[] = 0666;                                       // permissions (default 644)
-        }
-
-        return $params;
-    }
-
-    /**
-     * get __construct() parameters for SwiftMailerHandler() call
-     * @return array
-     */
-    protected function getHandlerParamsMail() : array {
-        $params = [];
-        if( !empty($conf = $this->handlerParamsConfig['mail']) ){
-            $transport = (new \Swift_SmtpTransport())
-                ->setHost($conf->host)
-                ->setPort($conf->port)
-                ->setEncryption($conf->scheme)
-                ->setUsername($conf->username)
-                ->setPassword($conf->password)
-                ->setStreamOptions([
-                    'ssl' => [
-                        'allow_self_signed' => true,
-                        'verify_peer' => false
-                    ]
-                ]);
-
-            $mailer = new \Swift_Mailer($transport);
-
-            // callback function used instead of Swift_Message() object
-            // -> we want the formatted/replaced message as subject
-            $messageCallback = function($content, $records) use ($conf){
-                $subject = 'No Subject';
-                if(!empty($records)){
-                    // build subject from first record -> remove "markdown"
-                    $subject = str_replace(['*', '_'], '', $records[0]['message']);
-                }
-
-                $jsonData = @json_encode($records, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-
-
-                $message = (new \Swift_Message())
-                    ->setSubject($subject)
-                    ->addPart($jsonData)
-                    ->setFrom($conf->from)
-                    ->setTo($conf->to)
-                    ->setContentType('text/html')
-                    ->setCharset('utf-8')
-                    ->setMaxLineLength(1000);
-
-                if($conf->addJson){
-                    $jsonAttachment = (new \Swift_Attachment())
-                        ->setFilename('data.json')
-                        ->setContentType('application/json')
-                        ->setBody($jsonData);
-                    $message->attach($jsonAttachment);
-                }
-
-                return $message;
-            };
-
-            $params[] = $mailer;
-            $params[] = $messageCallback;
-            $params[] = Logger::toMonologLevel($this->getLevel());  // min level that is handled
-            $params[] = true;                                       // bubble
         }
 
         return $params;

@@ -348,8 +348,8 @@ class Config extends \Prefab {
         ];
 
         if($config['SCHEME'] == 'mysql'){
-            $options[\PDO::MYSQL_ATTR_COMPRESS]     = true;
-            $options[\PDO::MYSQL_ATTR_INIT_COMMAND] = implode(',', [
+            $options[\Pdo\Mysql::ATTR_COMPRESS]     = true;
+            $options[\Pdo\Mysql::ATTR_INIT_COMMAND] = implode(',', [
                 "SET NAMES " . self::getRequiredDbVars($f3, $config['SCHEME'])['CHARACTER_SET_CONNECTION'] . " COLLATE " . self::getRequiredDbVars($f3, $config['SCHEME'])['COLLATION_CONNECTION'],
                 "@@session.time_zone = '+00:00'",
                 "@@session.default_storage_engine = " . self::getRequiredDbVars($f3, $config['SCHEME'])['DEFAULT_STORAGE_ENGINE']
@@ -373,58 +373,6 @@ class Config extends \Prefab {
      */
     static function getRequiredDbVars(\Base $f3, string $schema) : array {
         return $f3->exists('REQUIREMENTS[' . strtoupper($schema) . '][VARS]', $vars) ? $vars : [];
-    }
-
-    /**
-     * get SMTP config values
-     * @return \stdClass
-     */
-    static function getSMTPConfig() : \stdClass{
-        $config             = new \stdClass();
-        $config->host       = self::getEnvironmentData('SMTP_HOST');
-        $config->port       = self::getEnvironmentData('SMTP_PORT');
-        $config->scheme     = self::getEnvironmentData('SMTP_SCHEME');
-        $config->username   = self::getEnvironmentData('SMTP_USER');
-        $config->password   = self::getEnvironmentData('SMTP_PASS');
-        $config->from       = [
-            self::getEnvironmentData('SMTP_FROM') => self::getPathfinderData('name')
-        ];
-        return $config;
-    }
-
-    /**
-     * validates an SMTP config
-     * @param \stdClass $config
-     * @return bool
-     */
-    static function isValidSMTPConfig(\stdClass $config) : bool {
-        // validate email from either an configured array or plain string
-        $validateMailConfig = function($mailConf = null) : bool {
-            $email = null;
-            if(is_array($mailConf)){
-                reset($mailConf);
-                $email = key($mailConf);
-            }elseif(is_string($mailConf)){
-                $email = $mailConf;
-            }
-            return \Audit::instance()->email($email);
-        };
-
-        return (
-            !empty($config->host) &&
-            !empty($config->username) &&
-            $validateMailConfig($config->from) &&
-            $validateMailConfig($config->to)
-        );
-    }
-
-    /**
-     * get email for notifications by hive key
-     * @param $key
-     * @return mixed
-     */
-    static function getNotificationMail($key){
-        return self::getPathfinderData('notification' . ($key ? '.' . $key : ''));
     }
 
     /**
@@ -598,7 +546,7 @@ class Config extends \Prefab {
      * @param \DateTime|null $dateCheck
      * @return bool
      */
-    static function inDownTimeRange(\DateTime $dateCheck = null) : bool {
+    static function inDownTimeRange(?\DateTime $dateCheck = null) : bool {
         $inRange = false;
         // default daily downtime 00:00am
         $downTimeParts = [0, 0];

@@ -953,7 +953,7 @@ define([
      */
     const unicodeToString = (text) => {
         const result = text.replace(/\\u[\dA-F]{4}/gi, (match) => String.fromCharCode(parseInt(match.replace(/\\u/g, ''), 16)))
-        return result.substring(0, 2) == "u'" ? result.substring(2, result.length - 1) : result;
+        return result.substring(0, 2) === 'u\'' ? result.substring(2, result.length - 1) : result;
     };
 
     /**
@@ -1019,7 +1019,7 @@ define([
 
                 window.addEventListener('test', null, opts);
                 window.removeEventListener('test', null, opts);
-            } catch (e){}
+            } catch (e){ /* feature detection: passive option unsupported */ }
 
             return supported;
         };
@@ -1754,7 +1754,7 @@ define([
             // line breaks are 2 characters!
             let newLines = value.match(/(\r\n|\n|\r)/g);
             let addition = 0;
-            if(newLines != null){
+            if(newLines !== null){
                 addition = newLines.length;
             }
             inputLength += addition;

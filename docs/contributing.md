@@ -27,10 +27,8 @@ The sources in `js/`, `sass/` and `img/` are **not** served directly — only th
 - **PHP ≥ 7.2 (64-bit)** with extensions: `pdo`, `openssl`, `curl`, `json`, `mbstring`, `ctype`, `gd` (and optionally `redis`).
   See `composer.json` for the authoritative list.
 - **Composer** (the image pins 2.1.8, any recent 2.x works).
-- **Node.js 12.x + npm** (`package.json` → `engines`).
-  The build pulls in `node-sass`, whose native binding is locked to the runtime: on a too-new Node the build fails at load with *"Node Sass does not yet support your current environment"*. Stick to Node 12.x.
-- A **C++ toolchain** for the `node-sass` / `node-gyp` native build.
-  On Windows that means Python + Visual Studio Build Tools; on Linux `build-essential` + Python.
+- **Node.js 24.x + npm** (`package.json` → `engines`). The container build uses `node:24`.
+  CSS is compiled with `sass` (Dart Sass, pure JS) — no native binding, no Node-version lock.
 - **GraphicsMagick or ImageMagick** — required by the image tasks (`gulp-image-resize`), and must be on `PATH`.
   Only needed if you run the `images` task.
 
@@ -43,11 +41,7 @@ composer install                                                   # development
 
 This produces `vendor/` (git-ignored).  
 The autoloader namespace `Exodus4D\Pathfinder\` maps to `app/` (PSR-4).
-
-**Developing against a local `pathfinder_esi`:** `composer-dev.json` points the ESI library at a sibling checkout (`../pathfinder_esi`) and disables the lock. Use it with the `COMPOSER` env var:
-```shell
-COMPOSER=composer-dev.json composer update
-```
+The ESI client library (`Exodus4D\ESI\`) is vendored in-tree at `app/Lib/Esi/`.
 
 ## 2. Front-end assets (Gulp)
 
@@ -111,7 +105,7 @@ Other option: `--debug`. See `npm run gulp help` for the full list.
 
 ### JS linting
 
-The `default` / watch flow runs JSHint over `js/` using `.jshintrc`.
+The `default` / watch flow runs ESLint over `js/app/` using `eslint.config.js`.
 Fix reported issues before committing - the build prints a per-file summary table (original vs. uglified/gzip/brotli sizes).
 
 ## 3. Putting it together

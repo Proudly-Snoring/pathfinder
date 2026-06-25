@@ -45,14 +45,7 @@ class Setup extends Controller {
         'CCP_SSO_SECRET_KEY' => [],
         'CCP_SSO_DOWNTIME' => [],
         'CCP_ESI_URL' => [],
-        'CCP_ESI_DATASOURCE' => [],
-        'SMTP_HOST' => [],
-        'SMTP_PORT' => [],
-        'SMTP_SCHEME' => [],
-        'SMTP_USER' => [],
-        'SMTP_PASS' => [],
-        'SMTP_FROM' => [],
-        'SMTP_ERROR' => []
+        'CCP_ESI_DATASOURCE' => []
     ];
 
     /**
@@ -195,7 +188,7 @@ class Setup extends Controller {
         // enables automatic column fix
         $fixColumns = false;
 
-        switch($params['action']){
+        switch($params['action'] ?? ''){
             case 'createDB':
                 $this->createDB($f3, $params['db']);
                 break;
@@ -320,7 +313,7 @@ class Setup extends Controller {
         ];
 
         // obscure some values
-        $obscureVars = ['CCP_SSO_CLIENT_ID', 'CCP_SSO_SECRET_KEY', 'SMTP_PASS'];
+        $obscureVars = ['CCP_SSO_CLIENT_ID', 'CCP_SSO_SECRET_KEY'];
 
         foreach($this->environmentVars as $var => $options){
             if( !in_array($var, $excludeVars) ){
@@ -917,7 +910,7 @@ class Setup extends Controller {
                 ($parts = parse_url(session_save_path()))
             ){
                 // parse URL parameters
-                parse_str((string)$parts['query'], $params);
+                parse_str((string)($parts['query'] ?? ''), $params);
 
                 $conf = [
                     'type' => 'redis',
@@ -932,7 +925,7 @@ class Setup extends Controller {
 
             // sort all $dsnData by 'db' number -----------------------------------------------------------------------
             usort($dsnData, function($a, $b){
-                return $a['db'] <=> $b['db'];
+                return ($a['db'] ?? 0) <=> ($b['db'] ?? 0);
             });
 
             foreach($dsnData as $conf){
@@ -967,28 +960,28 @@ class Setup extends Controller {
             $systemConf = [
                 'git' => [
                     'label' => 'Git',
-                    'version' => $gitOut[0] ? 'installed' : 'missing',
+                    'version' => !empty($gitOut[0]) ? 'installed' : 'missing',
                     'check' => $gitStatus == 0,
-                    'tooltip' => 'Git # git --version : ' . $gitOut[0]
+                    'tooltip' => 'Git # git --version : ' . ($gitOut[0] ?? '')
                 ],
                 'composer' => [
                     'label' => 'Composer',
-                    'version' => $composerOut[0] ? 'installed' : 'missing',
+                    'version' => !empty($composerOut[0]) ? 'installed' : 'missing',
                     'check' => $composerStatus == 0,
-                    'tooltip' => 'Composer # composer -V : ' . $composerOut[0]
+                    'tooltip' => 'Composer # composer -V : ' . ($composerOut[0] ?? '')
                 ],
                 'node' => [
                     'label' => 'NodeJs',
                     'required' => number_format((float)$f3->get('REQUIREMENTS.PATH.NODE'), 1, '.', ''),
-                    'version' => $normalizeVersion($nodeOut[0]) ?: 'missing',
-                    'check' => version_compare( $normalizeVersion($nodeOut[0]), number_format((float)$f3->get('REQUIREMENTS.PATH.NODE'), 1, '.', ''), '>='),
+                    'version' => $normalizeVersion($nodeOut[0] ?? '') ?: 'missing',
+                    'check' => version_compare( $normalizeVersion($nodeOut[0] ?? ''), number_format((float)$f3->get('REQUIREMENTS.PATH.NODE'), 1, '.', ''), '>='),
                     'tooltip' => 'NodeJs # node -v'
                 ],
                 'npm' => [
                     'label' => 'npm',
                     'required' => $f3->get('REQUIREMENTS.PATH.NPM'),
-                    'version' => $normalizeVersion($npmOut[0]) ?: 'missing',
-                    'check' => version_compare( $normalizeVersion($npmOut[0]), $f3->get('REQUIREMENTS.PATH.NPM'), '>='),
+                    'version' => $normalizeVersion($npmOut[0] ?? '') ?: 'missing',
+                    'check' => version_compare( $normalizeVersion($npmOut[0] ?? ''), $f3->get('REQUIREMENTS.PATH.NPM'), '>='),
                     'tooltip' => 'npm # npm -v'
                 ]
             ];
@@ -1049,10 +1042,6 @@ class Setup extends Controller {
                 case 'send_rally_discord_enabled':
                     $label = '<i class="fab fa-fw fa-discord"></i> Rally point poke Discord';
                     $tooltip = 'If "enabled", map admins can set a Discord channel for rally point pokes.';
-                    break;
-                case 'send_rally_mail_enabled':
-                    $label = '<i class="fas fa-fw fa-envelope"></i> Rally point poke Email';
-                    $tooltip = 'If "enabled", rally point pokes can be send by Email (SMTP config + recipient address required).';
                     break;
                 default:
                     $label = 'unknown';
@@ -1205,10 +1194,10 @@ class Setup extends Controller {
 
                         $columnStatusCheck = true;
                         $foreignKeyStatusCheck = true;
-                        $requiredTables[$requiredTableName]['fieldConf'][$columnName]['requiredType'] = $fieldConf['type'];
+                        $requiredTables[$requiredTableName]['fieldConf'][$columnName]['requiredType'] = $fieldConf['type'] ?? null;
                         $requiredTables[$requiredTableName]['fieldConf'][$columnName]['requiredNullable'] = ($fieldConf['nullable']) ? '1' : '0';
-                        $requiredTables[$requiredTableName]['fieldConf'][$columnName]['requiredIndex'] = ($fieldConf['index']) ? '1' : '0';
-                        $requiredTables[$requiredTableName]['fieldConf'][$columnName]['requiredUnique'] = ($fieldConf['unique']) ? '1' : '0';
+                        $requiredTables[$requiredTableName]['fieldConf'][$columnName]['requiredIndex'] = ($fieldConf['index'] ?? null) ? '1' : '0';
+                        $requiredTables[$requiredTableName]['fieldConf'][$columnName]['requiredUnique'] = ($fieldConf['unique'] ?? null) ? '1' : '0';
 
                         if(array_key_exists($columnName, $currentColumns)){
                             // column exists
@@ -1226,7 +1215,7 @@ class Setup extends Controller {
                             $currentColIndexData = call_user_func(Config::withNamespace($data['model']) . '::indexExists', [$columnName]);
                             $currentColIndex = is_array($currentColIndexData);
                             $hasIndex = ($currentColIndex) ? '1' : '0';
-                            $hasUnique = ($currentColIndexData['unique']) ? '1' : '0';
+                            $hasUnique = ($currentColIndexData['unique'] ?? null) ? '1' : '0';
                             $changedType = false;
                             $changedNullable = false;
                             $changedUnique = false;
@@ -1289,17 +1278,17 @@ class Setup extends Controller {
                             $indexKey = (bool)$hasIndex;
                             $indexUnique = (bool)$hasUnique;
 
-                            if($currentColIndex != $fieldConf['index']){
+                            if($currentColIndex != ($fieldConf['index'] ?? null)){
                                 $changedIndex = true;
                                 $columnStatusCheck = false;
                                 $tableStatusCheckCount++;
 
                                 $indexUpdate = true;
-                                $indexKey = (bool)$fieldConf['index'];
+                                $indexKey = (bool)($fieldConf['index'] ?? null);
                             }
 
                             // check if column unique changed ---------------------------------------------------------
-                            if($currentColIndexData['unique'] != $fieldConf['unique']){
+                            if(($currentColIndexData['unique'] ?? null) != ($fieldConf['unique'] ?? null)){
                                 $changedUnique = true;
                                 $columnStatusCheck = false;
                                 $tableStatusCheckCount++;

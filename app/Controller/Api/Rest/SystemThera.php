@@ -74,7 +74,7 @@ class SystemThera extends AbstractRestController {
             if($key == 'sourceSignature' && $eveScoutConnection['wh_exits_outward']) {
                 $signatureData['type'] = ['name' => strtoupper((string)$eveScoutConnection['wh_type'])];
             }
-            if($key == 'targetSignature' && !$eveScoutConnection['wh_exits_outware']) {
+            if($key == 'targetSignature' && !$eveScoutConnection['wh_exits_outward']) {
                 $signatureData['type'] = ['name' => strtoupper((string)$eveScoutConnection['wh_type'])];
             }
             $connectionData[$key] = $signatureData;
