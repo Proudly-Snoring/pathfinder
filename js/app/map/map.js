@@ -753,10 +753,21 @@ define([
                     }
                 });
                 break;
-            case 'preserve_mass':   // set "preserve mass
-            case 'wh_eol':          // set "end of life"
+            case 'preserve_mass':
                 MapOverlayUtil.getMapOverlay(mapElement, 'timer').startMapUpdateCounter();
                 MapUtil.toggleConnectionType(connection, action);
+                MapUtil.markAsChanged(connection);
+                break;
+            case 'wh_lt_24h':   // < 24h is the default (no stored type) — clear all lifetime types
+                MapOverlayUtil.getMapOverlay(mapElement, 'timer').startMapUpdateCounter();
+                MapUtil.setConnectionLifetimeType(connection, undefined);
+                MapUtil.markAsChanged(connection);
+                break;
+            case 'wh_lt_4h':
+            case 'wh_lt_1h':
+            case 'wh_eol':
+                MapOverlayUtil.getMapOverlay(mapElement, 'timer').startMapUpdateCounter();
+                MapUtil.setConnectionLifetimeType(connection, action);
                 MapUtil.markAsChanged(connection);
                 break;
             case 'status_fresh':
@@ -1043,8 +1054,17 @@ define([
             currentConnectionData = MapUtil.getDataByConnection(connection);
         }
 
+        // sync lifetime status type
+        let allLifetimeTypes     = MapUtil.allConnectionLifetimeTypes();
+        let newLifetimeTypes     = allLifetimeTypes.intersect(newConnectionData.type);
+        let currentLifetimeTypes = allLifetimeTypes.intersect(currentConnectionData.type);
+        if(!newLifetimeTypes.equalValues(currentLifetimeTypes)){
+            MapUtil.setConnectionLifetimeType(connection, newLifetimeTypes.length ? newLifetimeTypes[0] : undefined);
+            currentConnectionData = MapUtil.getDataByConnection(connection);
+        }
+
         // check for unhandled connection type changes ----------------------------------------------------------------
-        let allToggleTypes = ['wh_eol', 'preserve_mass'];
+        let allToggleTypes = ['preserve_mass'];
         let newTypes = allToggleTypes.intersect(newConnectionData.type.diff(currentConnectionData.type));
         let oldTypes = allToggleTypes.intersect(currentConnectionData.type.diff(newConnectionData.type));
 
@@ -1404,6 +1424,10 @@ define([
             }
 
             mapConfig.map.setSuspendDrawing(false, true);
+
+            for(let connection of MapUtil.getConnectionsByType(mapConfig.map, 'wh_reduced')){
+                MapUtil.manageReducedStripe(connection, true);
+            }
 
             // update local connection cache
             updateConnectionsCache(mapConfig.map);
@@ -1850,7 +1874,7 @@ define([
 
             // hidden menu actions
             if(scope === 'abyssal'){
-                options.hidden.push('wh_eol');
+                options.hidden.push('wh_lifetime');
                 options.hidden.push('preserve_mass');
                 options.hidden.push('change_status');
                 options.hidden.push('wh_jump_mass_change');
@@ -1858,14 +1882,14 @@ define([
                 options.hidden.push('change_scope');
                 options.hidden.push('separator');
             }else if(scope === 'stargate'){
-                options.hidden.push('wh_eol');
+                options.hidden.push('wh_lifetime');
                 options.hidden.push('preserve_mass');
                 options.hidden.push('change_status');
                 options.hidden.push('wh_jump_mass_change');
 
                 options.hidden.push('scope_stargate');
             }else if(scope === 'jumpbridge'){
-                options.hidden.push('wh_eol');
+                options.hidden.push('wh_lifetime');
                 options.hidden.push('preserve_mass');
                 options.hidden.push('change_status');
                 options.hidden.push('wh_jump_mass_change');
@@ -1876,9 +1900,8 @@ define([
             }
 
             // active menu actions
-            if(connection.hasType('wh_eol') === true){
-                options.active.push('wh_eol');
-            }
+            let activeLifetime = MapUtil.allConnectionLifetimeTypes().find(lt => connection.hasType(lt));
+            options.active.push(activeLifetime || 'wh_lt_24h');
             if(connection.hasType('preserve_mass') === true){
                 options.active.push('preserve_mass');
             }
@@ -2187,8 +2210,8 @@ define([
                 PaintStyle: {
                     strokeWidth: 4,                                                     // connection width (inner)
                     stroke: '#3c3f41',                                                  // connection color (inner)
-                    outlineWidth: 2,                                                    // connection width (outer)
-                    outlineStroke: '#63676a',                                           // connection color (outer)
+                    outlineWidth: 3,                                                    // connection width (outer)
+                    outlineStroke: '#5a6066',                                           // connection color (outer) — <24h lifetime default
                     dashstyle: '0',                                                     // connection dashstyle (default) -> is used after connectionType got removed that has dashstyle specified
                     'stroke-linecap': 'round'                                           // connection shape
                 },
@@ -2197,10 +2220,10 @@ define([
                     ['Dot', {radius: 5, cssClass: config.endpointSourceClass}],
                     ['Dot', {radius: 5, cssClass: config.endpointTargetClass}]
                 ],
-                EndpointStyle: {fill: '#3c3f41', stroke: '#63676a', strokeWidth: 2},    // single endpoint style (used during drag action)
+                EndpointStyle: {fill: '#3c3f41', stroke: '#5a6066', strokeWidth: 2},    // single endpoint style (used during drag action)
                 EndpointStyles: [
-                    {fill: '#3c3f41', stroke: '#63676a', strokeWidth: 2},
-                    {fill: '#3c3f41', stroke: '#63676a', strokeWidth: 2}
+                    {fill: '#3c3f41', stroke: '#5a6066', strokeWidth: 2},
+                    {fill: '#3c3f41', stroke: '#5a6066', strokeWidth: 2}
                 ],
                 Connector: ['Bezier', {curviness: 40}],                                 // default connector style (this is not used!) all connections have their own style (by scope)
                 ReattachConnections: false,                                             // re-attach connection if dragged with mouse to "nowhere"

@@ -377,6 +377,12 @@ define([], () => {
             stargate: {
                 cssClass: 'pf-map-connection-stargate'
             },
+            wh_lt_4h: {
+                cssClass: 'pf-map-connection-wh-lt-4h'
+            },
+            wh_lt_1h: {
+                cssClass: 'pf-map-connection-wh-lt-1h'
+            },
             wh_eol: {
                 cssClass: 'pf-map-connection-wh-eol'
             },

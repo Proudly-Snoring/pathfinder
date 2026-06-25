@@ -735,6 +735,8 @@ $mapBubbleWidth:        30px;
     }
   }
 
+  .pf-map-connection-wh-lt-4h,
+  .pf-map-connection-wh-lt-1h,
   .pf-map-connection-wh-fresh,
   .pf-map-connection-wh-reduced,
   .pf-map-connection-wh-critical,
@@ -742,25 +744,32 @@ $mapBubbleWidth:        30px;
     z-index: 70;
   }
 
-  .pf-map-connection-wh-eol {
-
-    path:first-child{
-      stroke: $pink-dark;
-    }
+  .pf-map-connection-wh-fresh {
+    path:nth-child(2){ stroke: $wh-mass-fresh; }
   }
 
   .pf-map-connection-wh-reduced {
-
-    path:nth-child(2){
-      stroke: $orange;
+    path:nth-child(3){
+      stroke: $wh-mass-fresh;
+      stroke-dasharray: 10px 10px;
+      stroke-linecap: butt;
     }
   }
 
   .pf-map-connection-wh-critical {
+    path:nth-child(2){ stroke: $wh-mass-critical; }
+  }
 
-    path:nth-child(2){
-      stroke: $red-dark;
-    }
+  .pf-map-connection-wh-lt-4h {
+    path:first-child{ stroke: $wh-lt-color-4h; }
+  }
+
+  .pf-map-connection-wh-lt-1h {
+    path:first-child{ stroke: $wh-lt-color-1h; }
+  }
+
+  .pf-map-connection-wh-eol {
+    path:first-child{ stroke: $wh-lt-color-eol; }
   }
 
   .pf-map-connection-wh-size-s {

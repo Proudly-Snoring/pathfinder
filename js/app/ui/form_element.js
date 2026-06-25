@@ -184,6 +184,12 @@ define([
                 let metaData = state.metaData;
                 if(metaData.type){
                     let type = metaData.type;
+                    if(type.includes('wh_lt_4h')){
+                        styleClass.push('pf-wh-lt-4h');
+                    }
+                    if(type.includes('wh_lt_1h')){
+                        styleClass.push('pf-wh-lt-1h');
+                    }
                     if(type.includes('wh_eol')){
                         styleClass.push('pf-wh-eol');
                     }

@@ -102,12 +102,17 @@ define([
         let moduleData = {
             id: config.connectionContextMenuId,
             items: [
-                {icon: 'fa-hourglass-end', action: 'wh_eol', text: 'toggle EOL'},
                 {icon: 'fa-exclamation-triangle', action: 'preserve_mass', text: 'preserve mass'},
-                {icon: 'fa-reply fa-rotate-180', action: 'change_status', text: 'mass status', subitems: [
-                        {subIcon: 'fa-circle', subIconClass: 'txt-color txt-color-gray', subAction: 'status_fresh', subText: 'stage 1 (fresh)'},
-                        {subIcon: 'fa-circle', subIconClass: 'txt-color txt-color-orange', subAction: 'status_reduced', subText: 'stage 2 (reduced)'},
-                        {subIcon: 'fa-circle', subIconClass: 'txt-color txt-color-redDark', subAction: 'status_critical', subText: 'stage 3 (critical)'}
+                {icon: 'fa-hourglass-end', action: 'wh_lifetime', text: 'lifetime status', subitems: [
+                        {subIcon: 'fa-circle', subIconClass: 'txt-color txt-color-whLt24h', subAction: 'wh_lt_24h', subText: '< 24h'},
+                        {subIcon: 'fa-circle', subIconClass: 'txt-color txt-color-whLt4h',  subAction: 'wh_lt_4h',  subText: '< 4h'},
+                        {subIcon: 'fa-circle', subIconClass: 'txt-color txt-color-whLt1h',  subAction: 'wh_lt_1h',  subText: '< 1h'},
+                        {subIcon: 'fa-circle', subIconClass: 'txt-color txt-color-whEol',   subAction: 'wh_eol',    subText: 'close imminent'},
+                    ]},
+                {icon: 'fa-weight-hanging', action: 'change_status', text: 'mass status', subitems: [
+                        {subIcon: 'fa-circle', subIconClass: 'txt-color txt-color-whMassFresh',    subAction: 'status_fresh',    subText: 'stage 1 (fresh)'},
+                        {subIcon: 'fa-circle', subIconClass: 'txt-color txt-color-gray',           subAction: 'status_reduced',  subText: 'stage 2 (reduced)'},
+                        {subIcon: 'fa-circle', subIconClass: 'txt-color txt-color-whMassCritical', subAction: 'status_critical', subText: 'stage 3 (critical)'}
 
                     ]},
                 {icon: 'fa-reply fa-rotate-180', action: 'wh_jump_mass_change', text: 'ship size', subitems: [

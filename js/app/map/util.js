@@ -427,6 +427,10 @@ define([
             // remove connections from map
             let removeConnections = connections => {
                 for(let connection of connections){
+                    if(connection.canvas){
+                        let base = connection.canvas.querySelector('.' + REDUCED_BASE_CLASS);
+                        if(base && base._pfObserver) base._pfObserver.disconnect();
+                    }
                     connection._jsPlumb.instance.deleteConnection(connection, {fireEvent: false});
                 }
             };
@@ -1261,6 +1265,36 @@ define([
         return ['wh_jump_mass_s', 'wh_jump_mass_m', 'wh_jump_mass_l', 'wh_jump_mass_xl'];
     };
 
+    const REDUCED_BASE_CLASS = 'pf-wh-reduced-base';
+
+    let manageReducedStripe = (connection, addStripe) => {
+        let svg = connection.canvas;
+        if(!svg) return;
+        let existing = svg.querySelector('.' + REDUCED_BASE_CLASS);
+        if(addStripe && !existing){
+            let outerPath = svg.querySelector('path:first-child');
+            if(!outerPath) return;
+            let base = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            base.classList.add(REDUCED_BASE_CLASS);
+            base.setAttribute('d', outerPath.getAttribute('d') || '');
+            base.setAttribute('transform', outerPath.getAttribute('transform') || '');
+            base.setAttribute('stroke', '#1a1a1a');
+            base.setAttribute('stroke-width', '4');
+            base.setAttribute('fill', 'none');
+            base.setAttribute('stroke-linecap', 'round');
+            outerPath.insertAdjacentElement('afterend', base);
+            let observer = new MutationObserver(() => {
+                base.setAttribute('d', outerPath.getAttribute('d') || '');
+                base.setAttribute('transform', outerPath.getAttribute('transform') || '');
+            });
+            observer.observe(outerPath, {attributes: true, attributeFilter: ['d', 'transform']});
+            base._pfObserver = observer;
+        } else if(!addStripe && existing){
+            if(existing._pfObserver) existing._pfObserver.disconnect();
+            existing.remove();
+        }
+    };
+
     /**
      * set/change/remove connection mass status of connection
      * -> statusType == undefined will remove (all) existing mass status types
@@ -1269,7 +1303,7 @@ define([
      */
     let setConnectionMassStatusType = (connection, statusType) => {
         setUniqueConnectionType(connection, statusType, allConnectionMassStatusTypes());
-
+        manageReducedStripe(connection, statusType === 'wh_reduced');
     };
 
     /**
@@ -1280,6 +1314,13 @@ define([
      */
     let setConnectionJumpMassType = (connection, massType) => {
         setUniqueConnectionType(connection, massType, allConnectionJumpMassTypes());
+    };
+
+    // wh_lt_24h is deliberately absent: it means "no stored type" (implicit default), handled by clearing all lifetime types
+    let allConnectionLifetimeTypes = () => ['wh_lt_4h', 'wh_lt_1h', 'wh_eol'];
+
+    let setConnectionLifetimeType = (connection, lifetimeType) => {
+        setUniqueConnectionType(connection, lifetimeType, allConnectionLifetimeTypes());
     };
 
     /**
@@ -2236,8 +2277,11 @@ define([
         getDefaultConnectionTypeByScope: getDefaultConnectionTypeByScope,
         allConnectionMassStatusTypes: allConnectionMassStatusTypes,
         allConnectionJumpMassTypes: allConnectionJumpMassTypes,
+        allConnectionLifetimeTypes: allConnectionLifetimeTypes,
+        manageReducedStripe: manageReducedStripe,
         setConnectionMassStatusType: setConnectionMassStatusType,
         setConnectionJumpMassType: setConnectionJumpMassType,
+        setConnectionLifetimeType: setConnectionLifetimeType,
         getScopeInfoForConnection: getScopeInfoForConnection,
         deleteConnections: deleteConnections,
         getConnectionDataFromSignatures: getConnectionDataFromSignatures,
