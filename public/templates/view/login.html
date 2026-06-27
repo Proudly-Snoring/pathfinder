@@ -18,11 +18,9 @@
                 <span class="icon-bar"></span>
                 <span class="icon-bar"></span>
             </button>
-
             <p class="navbar-text">
                 <span class="badge txt-color txt-color-green pf-navbar-version-info">{{ @PATHFINDER.VERSION }}</span>
             </p>
-
             <ul class="nav navbar-nav navbar-right" role="tablist">
                 <li><a class="pf-navbar-manual" href="#">Manual</a></li>
             </ul>
@@ -30,7 +28,7 @@
         <div  class="navbar-collapse collapse">
             <ul class="nav navbar-nav navbar-right" role="tablist">
                 <li><a class="page-scroll" data-target="pf-landing-top" href="#pf-landing-top">Login</a></li>
-                <li> <a class="pf-navbar-license" href="#">License</a></li>
+                <li><a class="pf-navbar-license" href="#">License</a></li>
             </ul>
         </div>
     </div>
@@ -73,22 +71,40 @@
         </div>
     </check>
 
-    {* Admin login panel *}
-    <include href="templates/ui/admin_panel.html"/>
 </header>
 
 {* login form *}
 <section id="pf-landing-login">
-    <div class="container">
+    <div class="pf-login-warnings">
+
+        {* SSO error *}
+        <check if="{{ isset(@SESSION.SSO.ERROR) && @SESSION.SSO.ERROR }}">
+            <div class="container-fluid">
+                <div class="row">
+                    <div class="col-xs-12 col-md-8 col-md-offset-2">
+                        <div class="alert alert-danger">
+                            <span class="txt-color txt-color-danger">Access denied</span>
+                            <small>{{ @SESSION.SSO.ERROR }}</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </check>
 
         {* check for setup mode *}
-        <check if="{{ array_key_exists('/setup', @ROUTES) && @PATHFINDER.SHOW_SETUP_WARNING }}">
+        <check if="{{ (isset(@ALIASES.setup) || isset(@ALIASES.setup_api)) && @PATHFINDER.SHOW_SETUP_WARNING }}">
             <div class="container-fluid">
                 <div class="row">
                     <div class="col-xs-12 col-md-8 col-md-offset-2">
                         <div class="alert alert-warning" >
-                            <span class="txt-color txt-color-warning">Setup mode active</span>
-                            <small>Disable '/setup' route in routes.ini on production environment! <a href="{{ $BASE }}{{ 'setup' | alias }}">Setup</a></small>
+                            <p class="txt-color txt-color-warning">Setup mode active</p>
+                            <check if="{{ isset(@ALIASES.setup) }}">
+                                <p>The <a href="{{ @BASE }}{{ 'setup' | alias }}">/setup</a> path is accessible.</p>
+                            </check>
+                            <check if="{{ isset(@ALIASES.setup_api) }}">
+                                <p>The setup API is accessible.</p>
+                            </check>
+                            <p>On production environments, make sure to <b>disable</b> setup routes in app/routes.ini!</p>
                         </div>
                     </div>
                 </div>
@@ -104,35 +120,27 @@
             </div>
         </div>
 
-        {* cookie characters *}
-        <check if="{{ !@cookieCharacters }}">
-            <div class="row text-center">
-                <div class="col-md-8 col-md-offset-2">
-                    <h2 style="margin-top: 0;"><span class="text-primary">Sign</span> up</h2>
-                </div>
-            </div>
-        </check>
+    </div>
 
-        {* SSO login *}
-        <include href="templates/modules/sso.html"/>
-
-        {* release notes notification panel -> shown by Javascript *}
-        <div id="pf-notification-panel"></div>
+    {* SSO login *}
+    <div class="pf-login-main">
+        <div class="container">
+            <include href="templates/modules/sso.html"/>
+        </div>
     </div>
 </section>
-
 
 {* footer *}
 <footer class="pf-landing-footer">
     <div class="container">
         <div class="row">
-            <div class="col-sm-8">
-                Forked and maintained with ❤️ by <a target="_blank" href="https://github.com/Proudly-Snoring/pathfinder" rel="noopener">Proudly Snoring</a> from <a target="_blank" href="https://github.com/goryn-clade/pathfinder" rel="noopener">goryn-clade</a> and <a target="_blank" href="https://github.com/exodus4d/pathfinder" rel="noopener">exodus4d</a>
+            <div class="col-sm-12">
+                Forked and maintained with ❤️ by <a target="_blank" href="https://github.com/Proudly-Snoring/pathfinder" rel="noopener">Proudly Snoring</a> from <a target="_blank" href="https://github.com/goryn-clade/pathfinder" rel="noopener">goryn-clade</a> and <a target="_blank" href="https://github.com/exodus4d/pathfinder" rel="noopener">exodus4d</a>.
             </div>
-            <div class="col-sm-4 text-right">
-                <a class="btn btn-labeled btn-primary" href="{{ 'admin', ['*' => ''] | alias }}">
-                    <span class="btn-label"><i class="fas fa-sign-in-alt fa-fw"></i></span>&nbsp;admin&nbsp;SSO&nbsp;login
-                </a>
+        </div>
+        <div class="row">
+            <div class="col-sm-12 pf-footer-admin">
+                <i class="fas fa-sign-in-alt fa-fw"></i> <a href="{{ @BASE }}{{ 'admin', ['*' => ''] | alias }}">Admin SSO login</a>
             </div>
         </div>
     </div>
@@ -142,7 +150,7 @@
 <footer class="navbar-default navbar-fixed-bottom collapse" id="pf-cookie-hint">
     <div class="container-fluid">
         <p class="navbar-text">
-            Pathfinder requires cookies to maintain your login state between browser sessions. Read <a target="_blank" href="//github.com/exodus4d/pathfinder/issues/138" rel="noopener">more</a>.
+            Pathfinder requires cookies to maintain your login state between browser sessions.
         </p>
         <div class="pull-right">
             <button type="button" class="btn btn-default navbar-btn btn-success" data-toggle="collapse" data-target="#pf-cookie-hint" aria-expanded="false">

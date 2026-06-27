@@ -31,38 +31,4 @@
     <dt>debug</dt>
     <dd><kbd>{{ apiData.debug }}</kbd></dd>
 </dl>
-
-<table class="table table-condensed" style="font-size: 12px">
-    <thead>
-    <tr>
-        <td></td>
-        <td class="col-sm-1"></td>
-        <td class="col-sm-1"></td>
-        <td>route</td>
-        <td class="col-sm-3 text-right">tags</td>
-    </tr>
-    </thead>
-    <tbody>
-    {{#apiData.routes}}
-        <tr>
-            <td class="text-center pf-help-default txt-color txt-color-grayLight txt-color-{{ status }}" title="{{#statusTitle}}{{status}}{{/statusTitle}}">
-                <i class="fas fa-fw fa-circle initialism"></i>
-            </td>
-            <td class="text-center">
-                <kbd class="initialism txt-color {{#methodFormat}}{{method}}{{/methodFormat}}">{{ method }}</kbd>
-            </td>
-            <td class="text-center">
-                {{#version}}
-                    <kbd>{{ . }}</kbd>
-                {{/version}}
-            </td>
-            <td><kbd>{{ route }}</kbd></td>
-            <td class="text-right">
-            {{#tags}}
-                &nbsp;<kbd>{{ . }}</kbd>
-            {{/tags}}
-            </td>
-        </tr>
-    {{/apiData.routes}}
-    </tbody>
-</table>
+<div style="clear: both;"></div>

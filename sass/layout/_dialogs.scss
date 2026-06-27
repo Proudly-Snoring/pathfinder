@@ -353,8 +353,13 @@
   }
 
   .dl-horizontal{
-    display: inline-block;
-    width: 48%;
+    display: block;
+    margin: 0 auto;
+    max-width: 380px;
+  }
+
+  h3.txt-color-grayLight{
+    text-align: center;
   }
 
   .btn{

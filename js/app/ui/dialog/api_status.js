@@ -22,17 +22,6 @@ define([
 
         let data = {
             apiData: apiData,
-            methodFormat: () => {
-                return (val, render) => {
-                    switch(render(val)){
-                        case 'get':     return 'txt-color-blue';
-                        case 'post':    return 'txt-color-green';
-                        case 'put':     return 'txt-color-yellow';
-                        case 'delete':  return 'txt-color-red';
-                        default:        return '';
-                    }
-                };
-            },
             statusTitle: () => {
                 return (val, render) => {
                     switch(render(val)){
