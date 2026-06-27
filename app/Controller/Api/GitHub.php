@@ -37,6 +37,9 @@ class GitHub extends Controller\Controller {
 
         $releases = $f3->gitHubClient()->send('getProjectReleases', 'Proudly-Snoring/pathfinder', $releaseCount);
 
+        // sanitizer for the upstream-rendered release HTML (XSS defense-in-depth)
+        $purifier = $this->htmlPurifier($f3);
+
         foreach($releases as $key => &$release){
             // check version ------------------------------------------------------------------------------------------
             if($key === 0){
@@ -75,11 +78,37 @@ class GitHub extends Controller\Controller {
                 $body = \Markdown::instance()->convert(trim($body));
             }
 
-            $release['body'] = $body;
+            // strip anything but a safe allowlist of tags/attributes/URL schemes
+            // -> the body is rendered unescaped client-side ({{{ }}}), so this is the XSS gate
+            $release['body'] = $purifier->purify($body);
         }
 
         $return->releasesData = $releases;
 
         echo json_encode($return);
+    }
+
+    /**
+     * build an HTMLPurifier instance configured for release-note HTML
+     * @param \Base $f3
+     * @return \HTMLPurifier
+     */
+    protected function htmlPurifier(\Base $f3) : \HTMLPurifier {
+        $config = \HTMLPurifier_Config::createDefault();
+        $config->set('HTML.Allowed',
+            'p,br,hr,h1,h2,h3,h4,h5,h6,strong,b,em,i,del,blockquote,' .
+            'ul,ol,li,code,pre,a[href|title],img[src|alt|title],' .
+            'table,thead,tbody,tr,th,td');
+        // only http/https links and images -> blocks javascript:/data: payloads
+        $config->set('URI.AllowedSchemes', ['http' => true, 'https' => true]);
+
+        // serializer cache must be writable (tmp/ is chmod 0766 in the image)
+        $cacheDir = (string)$f3->get('TEMP') . 'htmlpurifier';
+        if(!is_dir($cacheDir)){
+            @mkdir($cacheDir, 0775, true); // @ -> tolerate concurrent first-request creation
+        }
+        $config->set('Cache.SerializerPath', $cacheDir);
+
+        return new \HTMLPurifier($config);
     }
 }
