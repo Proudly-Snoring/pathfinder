@@ -94,8 +94,7 @@ COPY --chown=nobody --from=assets /app/public/css pathfinder/public/css
 COPY --chown=nobody --from=assets /app/public/img pathfinder/public/img
 
 # Templates rendered at runtime by entrypoint.sh (envsubst)
-COPY deployment/pathfinder/routes.ini /var/www/html/pathfinder/app/
-COPY deployment/pathfinder/environment.ini /var/www/html/pathfinder/app/templateEnvironment.ini
+RUN cp /var/www/html/pathfinder/app/environment.ini /var/www/html/pathfinder/app/templateEnvironment.ini
 RUN cp /var/www/html/pathfinder/app/config.ini /var/www/html/pathfinder/app/templateConfig.ini
 
 RUN chmod 0766 pathfinder/logs pathfinder/tmp/
