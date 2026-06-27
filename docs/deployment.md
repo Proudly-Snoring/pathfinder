@@ -39,7 +39,7 @@ This directory holds the build context for a containerised Pathfinder stack.
 1. Open `http://localhost:8080/setup` — basic-auth user `pf`, password is the `APP_PASSWORD` defined in .env.
 2. Run the setup wizard: it builds the database schema and imports the static map data (`data/*`).
    Make sure to click both the "Setup tables" and "Fix columns/keys" buttons for both tables (pathfinder and eve_universe).
-3. **Comment out the `@setup` route** in `app/routes.ini` (and rebuild) once done.
+3. **Deny the setup routes in nginx** once done: in `deployment/nginx/site.conf`, replace `auth_basic` with `deny all;` in the `location ^~ /setup` block, then rebuild.
 
 ## Logging
 
