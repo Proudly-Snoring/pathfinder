@@ -460,9 +460,20 @@ class Sso extends Api\User{
         JWT::$leeway = 10;
         // get decoded JWT using ccp supplied JWK (allowed algs come from the Key objects in the parsed key set)
         $decodedJwt = JWT::decode($accessToken, JWK::parseKeySet($ccpJwks));
-        // check if issuer matches correct ccp supplied claim values
+        // verify issuer + audience claims (defense-in-depth; signature already verified above)
         // -> reject the token on mismatch (consistent with JWT::decode/JWK::parseKeySet, which throw)
-        if (!str_contains($decodedJwt->iss, $this->getSsoJwkClaim())) {
+        // issuer: exact host match against configured claim. A substring check would also accept
+        // hostile values like "login.eveonline.com.attacker.com". Normalize both sides identically
+        // so a scheme/trailing slash in CCP_SSO_JWK_CLAIM (CCP_SSO_URL above carries one) is tolerated.
+        $normalizeHost = static fn(string $v) : string => rtrim(preg_replace('~^https?://~', '', $v), '/');
+        $tokenIss = $normalizeHost((string)($decodedJwt->iss ?? ''));
+        // audience: must contain the configured SSO client_id (CCP guidance). aud is an array.
+        $tokenAud = $decodedJwt->aud ?? [];
+        $tokenAud = is_array($tokenAud) ? $tokenAud : [$tokenAud];
+        if (
+            $tokenIss !== $normalizeHost($this->getSsoJwkClaim()) ||
+            !in_array(self::getEnvironmentData('CCP_SSO_CLIENT_ID'), $tokenAud, true)
+        ) {
             self::getSSOLogger()->write(sprintf(self::ERROR_TOKEN_VERIFICATION, __METHOD__));
             throw new \UnexpectedValueException(self::ERROR_TOKEN_VERIFICATION);
         }
