@@ -84,31 +84,35 @@ class Connection extends AbstractRestController {
                     !is_null($source) &&
                     !is_null($target)
                 ){
+                    $connectionId = (int)$requestData['id'];
                     /**
                      * @var $connection Pathfinder\ConnectionModel
                      */
-                    $connection = Pathfinder\AbstractPathfinderModel::getNew('ConnectionModel');
-                    $connection->getById((int)$requestData['id']);
+                    $connection = $connectionId
+                        ? $map->getConnectionById($connectionId)
+                        : Pathfinder\AbstractPathfinderModel::getNew('ConnectionModel');
 
-                    $connection->mapId = $map;
-                    $connection->source = $source;
-                    $connection->target = $target;
+                    if(!is_null($connection)){
+                        $connection->mapId = $map;
+                        $connection->source = $source;
+                        $connection->target = $target;
 
-                    // if scope + type data send -> use them ...
-                    if($requestData['scope'] && !empty($requestData['type'])){
-                        $connection->copyfrom($requestData, ['scope', 'type']);
-                    }
+                        // if scope + type data send -> use them ...
+                        if($requestData['scope'] && !empty($requestData['type'])){
+                            $connection->copyfrom($requestData, ['scope', 'type']);
+                        }
 
-                    // ... set/change default scope + type
-                    if(!$requestData['disableAutoScope']){
-                        $connection->setAutoScopeAndType();
-                    }
+                        // ... set/change default scope + type
+                        if(!$requestData['disableAutoScope']){
+                            $connection->setAutoScopeAndType();
+                        }
 
-                    if($connection->save($activeCharacter)){
-                        $connectionData = $connection->getData();
+                        if($connection->save($activeCharacter)){
+                            $connectionData = $connection->getData();
 
-                        // broadcast map changes
-                        $this->broadcastMap($connection->mapId);
+                            // broadcast map changes
+                            $this->broadcastMap($connection->mapId);
+                        }
                     }
                 }
             }
