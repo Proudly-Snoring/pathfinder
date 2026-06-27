@@ -13,6 +13,8 @@ use Exodus4D\Pathfinder\Model\Pathfinder;
 
 class Connection extends AbstractRestController {
 
+    const ERROR_CONNECTION_NOT_FOUND = 'Connection id %s not found in map';
+
     /**
      * @param \Base $f3
      * @param $params
@@ -92,7 +94,11 @@ class Connection extends AbstractRestController {
                         ? $map->getConnectionById($connectionId)
                         : Pathfinder\AbstractPathfinderModel::getNew('ConnectionModel');
 
-                    if(!is_null($connection)){
+                    if(is_null($connection)){
+                        // id was given but connection does not belong to this map (or no longer exists)
+                        $f3->set('HALT', true);
+                        $f3->error(404, sprintf(self::ERROR_CONNECTION_NOT_FOUND, $connectionId));
+                    }else{
                         $connection->mapId = $map;
                         $connection->source = $source;
                         $connection->target = $target;
