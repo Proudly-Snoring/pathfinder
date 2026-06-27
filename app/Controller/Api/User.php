@@ -218,15 +218,17 @@ class User extends Controller\Controller{
         if( $targetId = (int)$data['targetId']){
             $activeCharacter = $this->getCharacter();
 
-            $response =  $f3->ccpClient()->send('openWindow', $targetId, $activeCharacter->getAccessToken());
+            if($activeCharacter){
+                $response =  $f3->ccpClient()->send('openWindow', $targetId, $activeCharacter->getAccessToken());
 
-            if(empty($response)){
-                $return->targetId = $targetId;
-            }else{
-                $error = (object) [];
-                $error->type = 'error';
-                $error->text = $response['error'];
-                $return->error[] = $error;
+                if(empty($response)){
+                    $return->targetId = $targetId;
+                }else{
+                    $error = (object) [];
+                    $error->type = 'error';
+                    $error->text = $response['error'];
+                    $return->error[] = $error;
+                }
             }
         }
 
@@ -351,7 +353,7 @@ class User extends Controller\Controller{
             $data['captcha'] === $captcha
         ){
             $activeCharacter = $this->getCharacter();
-            $user = $activeCharacter->getUser();
+            $user = $activeCharacter ? $activeCharacter->getUser() : null;
 
             if($user){
                 // save log
