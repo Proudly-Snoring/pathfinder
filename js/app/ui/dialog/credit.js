@@ -22,8 +22,6 @@ define([
             let data = {
                 version: Util.getVersion(),
                 imgSrcBackground: `${Util.imgRoot()}header/pf-header-780.webp`,
-                imgSrcPatreon: `${Util.imgRoot()}misc/donate_patreon.png`,
-                imgSrcPaypal: `${Util.imgRoot()}misc/donate_paypal.png`,
             };
 
             let content = Mustache.render(template, data);

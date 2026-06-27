@@ -205,10 +205,10 @@ class Setup extends Controller {
                 $this->exportTable($params['model']);
                 break;
             case 'clearFiles':
-                $this->clearFiles((string)$params['path']);
+                $this->clearFiles($f3, (string)$params['path']);
                 break;
             case 'flushRedisDb':
-                $this->flushRedisDb((string)$params['host'], (int)$params['port'], (int)$params['db']);
+                $this->flushRedisDb($f3, (string)$params['host'], (int)$params['port'], (int)$params['db']);
                 break;
             case 'invalidateCookies':
                 $this->invalidateCookies($f3);
@@ -2004,10 +2004,19 @@ class Setup extends Controller {
     }
 
     /**
-     * clear directory
+     * clear directory — path must be one of the configured cache dirs
+     * @param \Base $f3
      * @param string $path
      */
-    protected function clearFiles(string $path){
+    protected function clearFiles(\Base $f3, string $path){
+        $dirTemp = (string)$f3->get('TEMP');
+        Config::parseDSN((string)$f3->get('CACHE'), $conf);
+        $dirCache = ($conf['type'] ?? '') == 'folder' ? $conf['folder'] : $dirTemp . 'cache/';
+        $allowedDirs = array_filter(array_map('realpath', [$dirTemp, $dirCache]));
+        $realPath = realpath($path);
+        if($realPath === false || !in_array($realPath, $allowedDirs, true)){
+            return;
+        }
         $files = Search::getFilesByMTime($path);
         foreach($files as $filename => $file){
             /**
@@ -2022,12 +2031,25 @@ class Setup extends Controller {
     }
 
     /**
-     * clear all key in a specific Redis database
+     * clear all keys in a specific Redis database — host:port pinned to configured instances
+     * @param \Base $f3
      * @param string $host
      * @param int $port
      * @param int $db
      */
-    protected function flushRedisDb(string $host, int $port, int $db = 0){
+    protected function flushRedisDb(\Base $f3, string $host, int $port, int $db = 0){
+        $allowed = [];
+        foreach(['CACHE', 'API_CACHE'] as $key){
+            if(Config::parseDSN((string)$f3->get($key), $c) && ($c['type'] ?? '') === 'redis'){
+                $allowed[$c['host'] . ':' . $c['port']] = true;
+            }
+        }
+        if(strtolower(session_module_name()) === 'redis' && ($parts = parse_url(session_save_path()))){
+            $allowed[$parts['host'] . ':' . $parts['port']] = true;
+        }
+        if(!isset($allowed[$host . ':' . $port])){
+            return;
+        }
         $client = new \Redis();
         $client->pconnect($host, $port, 0.3);
         $client->select($db);

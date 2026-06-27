@@ -60,13 +60,9 @@ define([
         galleryThumbContainerId: 'pf-landing-gallery-thumb-container',          // id for gallery thumb images
         galleryCarouselId: 'pf-landing-gallery-carousel',                       // id for "carousel" element
 
-        // notification panel
-        notificationPanelId: 'pf-notification-panel',                           // id for "notification panel" (e.g. last update information)
-
         // sticky panel
         stickyPanelClass: 'pf-landing-sticky-panel',                            // class for sticky panels
         stickyPanelServerId: 'pf-landing-server-panel',                         // id for EVE Online server status panel
-        stickyPanelAdminId: 'pf-landing-admin-panel',                           // id for admin login panel
 
         apiStatusTriggerClass: 'pf-api-status-trigger',                         // class for "api status" dialog trigger elements
 
@@ -83,15 +79,6 @@ define([
         $('.' + config.navigationVersionLinkClass).off('click').on('click', function(e){
             $.fn.changelogsDialog();
         });
-    };
-
-    /**
-     * move panel out of "cookie" accept hint
-     * @param direction
-     */
-    let moveAdminPanel = (direction) => {
-        let adminPanel = $('#' + config.stickyPanelAdminId);
-        adminPanel.css({bottom: ((direction === 'up') ? '+' : '-') + '=35px'});
     };
 
     let setAcceptCookie = () => {
@@ -121,15 +108,6 @@ define([
             setAcceptCookie();
             // confirmation no longer needed on SSO login button
             ssoButtonElement.confirmation('destroy');
-        });
-
-        cookieHintElement.on('show.bs.collapse', function(){
-            // move admin panel upwards (prevents overlapping with cookie notice)
-            moveAdminPanel('up');
-        });
-
-        cookieHintElement.on('hidden.bs.collapse', function(){
-            moveAdminPanel('down');
         });
 
         if(Util.getCookie('cookie') !== '1'){
@@ -507,45 +485,6 @@ define([
      * show "notification panel" to user
      * -> checks if panel not already shown
      */
-    let initNotificationPanel = () => {
-        let storageKey = 'notification_panel';
-        let currentVersion = Util.getVersion();
-
-        let showNotificationPanel = () => {
-            let data = {
-                version: currentVersion
-            };
-
-            requirejs(['text!templates/ui/notice.html', 'mustache'], (template, Mustache) => {
-                let content = Mustache.render(template, data);
-
-                let notificationPanel = $('#' + config.notificationPanelId);
-                notificationPanel.html(content);
-                notificationPanel.velocity('transition.slideUpIn', {
-                    duration: 300,
-                    complete: function(){
-                        setVersionLinkObserver();
-
-                        // mark panel as "shown"
-                        Util.getLocalStore('default').setItem(storageKey, currentVersion);
-                    }
-                });
-            });
-        };
-
-        Util.getLocalStore('default').getItem(storageKey).then(data => {
-            // check if panel was shown before
-            if(data){
-                if(data !== currentVersion){
-                    // show current panel
-                    showNotificationPanel();
-                }
-            }else{
-                // show current panel
-                showNotificationPanel();
-            }
-        });
-    };
 
     /**
      * load character data from cookie information
@@ -791,9 +730,6 @@ define([
 
         // init server status information
         initServerStatus();
-
-        // init notification panel
-        initNotificationPanel();
 
         // init character select
         initCharacterSelect();
