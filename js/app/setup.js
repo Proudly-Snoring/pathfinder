@@ -112,7 +112,7 @@ define([
             e.preventDefault();
             e.stopPropagation();
             let element = $(this);
-            let url = '/api/Setup/' + element.attr('data-action');
+            let url = '/setup/api/' + element.attr('data-action');
             let payload = element.attr('data-payload');
             let callStartName = element.attr('data-callstart');
             let callBackName = element.attr('data-callback');
