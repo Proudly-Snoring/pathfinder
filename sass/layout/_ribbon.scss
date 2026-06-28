@@ -1,4 +1,6 @@
 
+@use "sass:color";
+
 .ribbon-wrapper {
   width: 72px;
   height: 88px;
@@ -33,47 +35,47 @@
 
   &.ribbon-default{
     color: $gray-lighter;
-    background-color: darken($modal-content-bg, 3%);
-    background-image: linear-gradient(top, darken($modal-content-bg, 6%), darken($gray-dark, 3%));
+    background-color: color.adjust($modal-content-bg, $lightness: -3%);
+    background-image: linear-gradient(top, color.adjust($modal-content-bg, $lightness: -6%), color.adjust($gray-dark, $lightness: -3%));
 
     &:before, &:after{
-      border-top:   3px solid darken($gray-dark, 23%);
+      border-top:   3px solid color.adjust($gray-dark, $lightness: -23%);
     }
   }
 
   &.ribbon-green{
     background-color: $green;
-    background-image: linear-gradient(top, darken($green, 3%), darken($green-dark, 3%));
+    background-image: linear-gradient(top, color.adjust($green, $lightness: -3%), color.adjust($green-dark, $lightness: -3%));
 
     &:before, &:after{
-      border-top:   3px solid darken($green-dark, 23%);
+      border-top:   3px solid color.adjust($green-dark, $lightness: -23%);
     }
   }
 
   &.ribbon-orange{
     background-color: $orange;
-    background-image: linear-gradient(top, darken($orange, 3%), darken($orange-dark, 3%));
+    background-image: linear-gradient(top, color.adjust($orange, $lightness: -3%), color.adjust($orange-dark, $lightness: -3%));
 
     &:before, &:after{
-      border-top:   3px solid darken($orange-dark, 18%) ;
+      border-top:   3px solid color.adjust($orange-dark, $lightness: -18%) ;
     }
   }
 
   &.ribbon-red{
     background-color:  $red;
-    background-image: linear-gradient(top, darken($red, 10%), darken($red, 18%));
+    background-image: linear-gradient(top, color.adjust($red, $lightness: -10%), color.adjust($red, $lightness: -18%));
 
     &:before, &:after{
-      border-top:   3px solid darken($red, 38%);
+      border-top:   3px solid color.adjust($red, $lightness: -38%);
     }
   }
 
   &.ribbon-blue{
     background-color: $blue;
-    background-image: linear-gradient(top, darken($blue, 3%), darken($blue-dark, 3%));
+    background-image: linear-gradient(top, color.adjust($blue, $lightness: -3%), color.adjust($blue-dark, $lightness: -3%));
 
     &:before, &:after{
-      border-top:   3px solid darken($blue-dark, 18%);
+      border-top:   3px solid color.adjust($blue-dark, $lightness: -18%);
     }
   }
 

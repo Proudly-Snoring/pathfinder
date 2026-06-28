@@ -1,3 +1,5 @@
+@use "sass:color";
+
 $characterSlideDuration: 500ms;
 
 .pf-animate{
@@ -490,7 +492,7 @@ $headerHeight: 355px;
   }
   .the-price {
     padding: 1px 0;
-    background: darken($modal-content-bg, 6%);
+    background: color.adjust($modal-content-bg, $lightness: -6%);
     text-align: center;
 
     .subscript{
@@ -564,7 +566,7 @@ $headerHeight: 355px;
   z-index: 1000;
   padding: 15px 0;
   font-family: $font-family-bold;
-  background-color: darken($gray-darker, 8%) ;
+  background-color: color.adjust($gray-darker, $lightness: -8%);
 
   .row{
     margin-bottom: 0 !important; // overwrite default
