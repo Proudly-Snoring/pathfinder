@@ -1,3 +1,5 @@
+@use "sass:color";
+
 .popover{
   // on top of modals even if they are attached to <body>
   z-index: $zindex-modal + 10;
@@ -34,7 +36,7 @@
     margin: 0;                            // reset heading margin
     padding: 8px 14px;                    // same as popover-title
     background-color: $popover-title-bg;
-    border-top: 1px solid darken($popover-bg, 5%);
+    border-top: 1px solid color.adjust($popover-bg, $lightness: -5%);
     border-bottom-left-radius: ($border-radius-large - 1);
     border-bottom-right-radius: ($border-radius-large - 1);
   }

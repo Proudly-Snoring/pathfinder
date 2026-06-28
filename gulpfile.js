@@ -202,7 +202,9 @@ let CONF = {
 let sassOptions = {
     errorLogToConsole: true,
     outputStyle: 'compressed', // nested, expanded, compact, compressed
-    loadPaths: [process.cwd()] // gulp-sass 6 (new dart-sass JS API) no longer adds CWD implicitly; needed for root-relative @import "sass/…"
+    loadPaths: [process.cwd()], // gulp-sass 6 (new dart-sass JS API) no longer adds CWD implicitly; needed for root-relative @import "sass/…"
+    quietDeps: true,            // silence deprecation warnings from vendored dependencies (Bootstrap 3.x etc.)
+    silenceDeprecations: ['import'] // @import in pathfinder.scss; full @use migration requires Bootstrap 3.x rewrite
 };
 
 let autoprefixerOptions = {

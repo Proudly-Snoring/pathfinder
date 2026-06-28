@@ -1,3 +1,5 @@
+@use "sass:color";
+
 // keyframes mixin
 @mixin keyframes($name) {
   @-webkit-keyframes #{$name} {
@@ -159,7 +161,7 @@
   }
 
   @include pf-pulse-keyframes($name, map-get($map, 'color'), map-get($map, 'backgroundColor'), $keepVisible);
-  @include pf-pulse-keyframes($nameActive, map-get($map, 'color'), darken(map-get($map, 'backgroundColor'), 5%), $keepVisible);
+  @include pf-pulse-keyframes($nameActive, map-get($map, 'color'), color.adjust(map-get($map, 'backgroundColor'), $lightness: -5%), $keepVisible);
 
   .#{$className}{
     @include animation($name 1s 1);

@@ -1,3 +1,5 @@
+@use "sass:math";
+
 $colMinWidth:               444px;
 
 $mapHeight:                 1500px;
@@ -7,7 +9,7 @@ $mapAreaHeight:             520px + 38px;
 $mapAreaMinHeight:          300px;
 $mapAreaMaxHeight:          1000px;              // no vertical scrollbar: $mapHeight + 38px;
 
-$mapModuleMaxWidth:         floor(4 * ($mapWidth + 16) / 3);
+$mapModuleMaxWidth:         math.floor(math.div(4 * ($mapWidth + 16), 3));
 $mapModuleGridGap:          10px;
 $mapModuleGridRowMinHeight: 38px;
 

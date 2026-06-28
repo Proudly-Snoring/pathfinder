@@ -1,9 +1,11 @@
-
+@use "sass:color";
+@use "sass:math";
+@use "sass:string";
 
 // a flag to toggle asset pipeline / compass integration
 // defaults to true if twbs-font-path function is present (no function => twbs-font-path('') parsed as string == right side)
 // in Sass 3.3 this can be improved with: function-exists(twbs-font-path)
-$bootstrap-sass-asset-helper: (twbs-font-path("") != unquote('twbs-font-path("")'));
+$bootstrap-sass-asset-helper: (twbs-font-path("") != string.unquote('twbs-font-path("")'));
 //
 // Variables
 // --------------------------------------------------
@@ -22,7 +24,7 @@ $text-color:            $gray-light;
 //** Global textual link color.
 $link-color:            $brand-primary;
 //** Link hover color set via `darken()` function.
-$link-hover-color:      darken($link-color, 15%);
+$link-hover-color:      color.adjust($link-color, $lightness: -15%);
 
 
 //== Typography
@@ -80,19 +82,19 @@ $font-style-base:         normal;
 $font-weight-base:        400;
 
 $font-size-base:          12px;
-$font-size-large:         ceil(($font-size-base * 1.24)); // ~16px
-$font-size-small:         ceil(($font-size-base * 0.85)); // ~11px
+$font-size-large:         math.ceil(($font-size-base * 1.24)); // ~16px
+$font-size-small:         math.ceil(($font-size-base * 0.85)); // ~11px
 
-$font-size-h1:            floor(($font-size-base * 1.85)); // ~24px
+$font-size-h1:            math.floor(($font-size-base * 1.85)); // ~24px
 $font-size-h2:            20px; //floor(($font-size-base * 1.24)); // ~22px
-$font-size-h3:            ceil(($font-size-base * 1.385)); // ~18px
+$font-size-h3:            math.ceil(($font-size-base * 1.385)); // ~18px
 $font-size-h4:            $font-size-base; //ceil(($font-size-base * 1.32)); // ~17px
-$font-size-h5:            ceil(($font-size-base * 1.16)); // ~16px
-$font-size-h6:            ceil(($font-size-base * 1.08)); // ~14px
+$font-size-h5:            math.ceil(($font-size-base * 1.16)); // ~16px
+$font-size-h6:            math.ceil(($font-size-base * 1.08)); // ~14px
 
 //$line-height-base:        1.428571429; // 20/14
 $line-height-base:        1.5; // 18/12
-$line-height-computed:    floor(($font-size-base * $line-height-base)); // ~18px
+$line-height-computed:    math.floor(($font-size-base * $line-height-base)); // ~18px
 
 $headings-font-family:    $font-family-base;
 $headings-font-weight:    700;
@@ -170,27 +172,27 @@ $btn-border-radius-base:         2px;
 
 $btn-default-color:              $gray-lightest;
 $btn-default-bg:                 $gray-light;
-$btn-default-border:             lighten($gray-light, 2%);
+$btn-default-border:             color.adjust($gray-light, $lightness: 2%);
 
 $btn-primary-color:              $gray-lightest;
 $btn-primary-bg:                 $brand-primary;
-$btn-primary-border:             lighten($btn-primary-bg, 2%);
+$btn-primary-border:             color.adjust($btn-primary-bg, $lightness: 2%);
 
 $btn-success-color:              $gray-lightest;
 $btn-success-bg:                 $brand-success;
-$btn-success-border:             lighten($btn-success-bg, 2%);
+$btn-success-border:             color.adjust($btn-success-bg, $lightness: 2%);
 
 $btn-info-color:                 $gray-lightest;
 $btn-info-bg:                    $brand-info;
-$btn-info-border:                lighten($btn-info-bg, 2%);
+$btn-info-border:                color.adjust($btn-info-bg, $lightness: 2%);
 
 $btn-warning-color:              $gray-lightest;
 $btn-warning-bg:                 $orange-dark;
-$btn-warning-border:             lighten($btn-warning-bg, 2%);
+$btn-warning-border:             color.adjust($btn-warning-bg, $lightness: 2%);
 
 $btn-danger-color:               $gray-lightest;
 $btn-danger-bg:                  $brand-danger;
-$btn-danger-border:              lighten($btn-danger-bg, 2%);
+$btn-danger-border:              color.adjust($btn-danger-bg, $lightness: 2%);
 
 $btn-link-disabled-color:        $gray-light;
 
@@ -210,8 +212,8 @@ $input-border-focus:             $teal-lighter;
 $input-color-placeholder:        $gray-light;
 
 $input-height-base:              ($line-height-computed + ($padding-base-vertical * 2) + 2);
-$input-height-large:             (ceil($font-size-large * $line-height-large) + ($padding-large-vertical * 2) + 2);
-$input-height-small:             (floor($font-size-small * $line-height-small) + ($padding-small-vertical * 2) + 2);
+$input-height-large:             (math.ceil($font-size-large * $line-height-large) + ($padding-large-vertical * 2) + 2);
+$input-height-small:             (math.floor($font-size-small * $line-height-small) + ($padding-small-vertical * 2) + 2);
 
 $legend-color:                   $gray-dark;
 $legend-border-color:            #e5e5e5;
@@ -335,8 +337,8 @@ $container-lg:                 $container-large-desktop;
 $navbar-height:                    30px;
 $navbar-margin-bottom:             $line-height-computed;
 $navbar-border-radius:             $border-radius-base;
-$navbar-padding-horizontal:        floor(($grid-gutter-width / 2));
-$navbar-padding-vertical:          (($navbar-height - $line-height-computed) / 2);
+$navbar-padding-horizontal:        math.floor(math.div($grid-gutter-width, 2));
+$navbar-padding-vertical:          math.div(($navbar-height - $line-height-computed), 2);
 $navbar-collapse-max-height:       340px;
 
 $navbar-default-color:             $gray-light;
@@ -359,7 +361,7 @@ $navbar-default-brand-hover-color:         $teal-lighter;
 $navbar-default-brand-hover-bg:            transparent;
 
 // Navbar toggle
-$navbar-default-toggle-hover-bg:           lighten($gray-lighter, 5%);
+$navbar-default-toggle-hover-bg:           color.adjust($gray-lighter, $lightness: 5%);
 $navbar-default-toggle-icon-bar-bg:        $teal;
 $navbar-default-toggle-border-color:       $teal;
 
@@ -368,14 +370,14 @@ $navbar-default-toggle-border-color:       $teal;
 // Reset inverted navbar basics
 $navbar-inverse-color:                      $gray-light;
 $navbar-inverse-bg:                         #222;
-$navbar-inverse-border:                     darken($navbar-inverse-bg, 10%);
+$navbar-inverse-border:                     color.adjust($navbar-inverse-bg, $lightness: -10%);
 
 // Inverted navbar links
 $navbar-inverse-link-color:                 $gray-light;
 $navbar-inverse-link-hover-color:           #fff;
 $navbar-inverse-link-hover-bg:              transparent;
 $navbar-inverse-link-active-color:          $navbar-inverse-link-hover-color;
-$navbar-inverse-link-active-bg:             darken($navbar-inverse-bg, 10%);
+$navbar-inverse-link-active-bg:             color.adjust($navbar-inverse-bg, $lightness: -10%);
 $navbar-inverse-link-disabled-color:        #444;
 $navbar-inverse-link-disabled-bg:           transparent;
 
@@ -466,7 +468,7 @@ $jumbotron-padding:              30px;
 $jumbotron-color:                inherit;
 $jumbotron-bg:                   $gray-lighter;
 $jumbotron-heading-color:        inherit;
-$jumbotron-font-size:            ceil(($font-size-base * 1.5));
+$jumbotron-font-size:            math.ceil(($font-size-base * 1.5));
 
 
 //== Form states and alerts
@@ -474,19 +476,19 @@ $jumbotron-font-size:            ceil(($font-size-base * 1.5));
 //## Define colors for form feedback states and, by default, alerts.
 
 $state-success-text:             $gray-darker;
-$state-success-bg:               lighten($brand-success, 40%);
+$state-success-bg:               color.adjust($brand-success, $lightness: 40%);
 $state-success-border:           $brand-success;
 
 $state-info-text:                $gray-darker;
-$state-info-bg:                  lighten($brand-info, 40%);
+$state-info-bg:                  color.adjust($brand-info, $lightness: 40%);
 $state-info-border:              $brand-info;
 
 $state-warning-text:             $gray-darker;
-$state-warning-bg:               lighten($brand-warning, 45%);
+$state-warning-bg:               color.adjust($brand-warning, $lightness: 45%);
 $state-warning-border:           $brand-warning;
 
 $state-danger-text:              $gray-darker;
-$state-danger-bg:                lighten($brand-danger, 50%);
+$state-danger-bg:                color.adjust($brand-danger, $lightness: 50%);
 $state-danger-border:            $brand-danger;
 
 
@@ -512,7 +514,7 @@ $popover-max-width:                   276px;
 $popover-border-color:                rgba(0,0,0,.2);
 $popover-fallback-border-color:       #ccc;
 
-$popover-title-bg:                    darken($popover-bg, 3%);
+$popover-title-bg:                    color.adjust($popover-bg, $lightness: -3%);
 
 $popover-arrow-width:                 7px;
 $popover-arrow-color:                 $gray-light;
@@ -611,7 +613,7 @@ $list-group-hover-bg:           $gray-light;
 $list-group-active-color:       $gray-lightest;
 $list-group-active-bg:          $component-active-bg;
 $list-group-active-border:      $list-group-active-bg;
-$list-group-active-text-color:  lighten($list-group-active-bg, 40%);
+$list-group-active-text-color:  color.adjust($list-group-active-bg, $lightness: 40%);
 
 $list-group-link-color:         #555;
 $list-group-link-heading-color: #333;
@@ -626,11 +628,11 @@ $panel-body-padding:          15px;
 $panel-border-radius:         5px;
 
 $panel-inner-border:          $gray-dark;
-$panel-footer-bg:             darken($modal-content-bg, 3%);
+$panel-footer-bg:             color.adjust($modal-content-bg, $lightness: -3%);
 
 $panel-default-text:          $gray-light;
 $panel-default-border:        $gray-darkest;
-$panel-default-heading-bg:    darken($modal-content-bg, 3%);
+$panel-default-heading-bg:    color.adjust($modal-content-bg, $lightness: -3%);
 
 $panel-primary-text:          $gray-darkest;
 $panel-primary-border:        $gray-darkest;
@@ -858,7 +860,7 @@ $asideExpanIconMT:				  2px;  /* margin top */
 //
 //##
 $smart-footer-height:       52px;
-$smart-footer-padding:      15px ($grid-gutter-width/2) 0;
+$smart-footer-padding:      15px math.div($grid-gutter-width, 2) 0;
 $smart-footer-background:   $asideColor-start;
 
 //== RIBBON

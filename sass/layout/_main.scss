@@ -1,3 +1,5 @@
+@use "sass:color";
+
 $endpointBubbleWidth: 18px;
 
 :fullscreen{
@@ -148,10 +150,10 @@ html{
   border: 5px solid transparent;
   background-clip: padding-box;
   -webkit-border-radius: 8px;
-  background-color: lighten($gray, 30%);
+  background-color: color.adjust($gray, $lightness: 30%);
 
   &:hover{
-    background-color: lighten($gray, 40%);
+    background-color: color.adjust($gray, $lightness: 40%);
   }
 }
 
@@ -361,7 +363,7 @@ html{
           line-height: 18px;
           margin-bottom: 5px;
           margin-top: 5px;
-          color: lighten($gray-light, 10%);
+          color: color.adjust($gray-light, $lightness: 10%);
           padding-left: 25px;
         }
 
@@ -538,12 +540,12 @@ select:active, select:hover {
       }
 
       &.disabled{
-        color: darken($gray-light, 8%)
+        color: color.adjust($gray-light, $lightness: -8%)
       }
 
       &.processing{
         &:after {
-          border: 2px solid darken($gray-light, 8%);
+          border: 2px solid color.adjust($gray-light, $lightness: -8%);
           border-left-color: $orange;
           border-right-color: $orange;
         }
@@ -1470,12 +1472,12 @@ table{
   }
 
   &.pf-map-connection-abyssal{
-    background-color: darken($pink-darker, 8%);
+    background-color: color.adjust($pink-darker, $lightness: -8%);
     border-color: $gray;
     background: repeating-linear-gradient(
                     to right,
-                    darken($pink-darker, 8%),
-                    darken($pink-darker, 8%) 5px,
+                    color.adjust($pink-darker, $lightness: -8%),
+                    color.adjust($pink-darker, $lightness: -8%) 5px,
                     $gray 5px,
                     $gray 10px
     );
@@ -1561,7 +1563,7 @@ table{
 .pf-fake-connection-text{
   padding: 0 2px;
   border-style: solid;
-  border-color: darken($gray-light, 5%);
+  border-color: color.adjust($gray-light, $lightness: -5%);
   border-width: 2px;
   border-left: none;
   border-right: none;
@@ -1740,7 +1742,7 @@ td.pf-popover-trigger{
 
 // code highlighting ==============================================================================
 .pf-code-ObjectBrace {
-  color: lighten($pink-darker, 15%);
+  color: color.adjust($pink-darker, $lightness: 15%);
   font-weight: bold;
 }
 
@@ -1750,7 +1752,7 @@ td.pf-popover-trigger{
 }
 
 .pf-code-PropertyName {
-  color: lighten($gray-light, 15%);
+  color: color.adjust($gray-light, $lightness: 15%);
   font-weight: bold;
 }
 
@@ -1768,7 +1770,7 @@ td.pf-popover-trigger{
 }
 
 .pf-code-Function {
-  color: lighten($gray-light, 15%);
+  color: color.adjust($gray-light, $lightness: 15%);
   font-style: italic;
   white-space: pre;
 }
@@ -1779,12 +1781,12 @@ td.pf-popover-trigger{
 }
 
 .pf-code-Comma {
-  color: lighten($gray-light, 15%);
+  color: color.adjust($gray-light, $lightness: 15%);
   font-weight: bold;
 }
 
 .pf-code-Date {
-  color: lighten($gray-light, 15%);
+  color: color.adjust($gray-light, $lightness: 15%);
   font-style: italic;
 }
 
