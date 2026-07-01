@@ -189,6 +189,41 @@
   }
 }
 
+.pf-route-wh-options {
+  padding-left: 20px;
+  width: 200px; // override bootstrap col width so option text fits on one line
+
+  .form-group {
+    display: flex;
+    align-items: center;
+    margin-bottom: 4px;
+
+    > label {
+      flex: 0 0 auto;
+      white-space: nowrap;
+      padding-right: 10px;
+      margin-bottom: 0;
+      text-align: right;
+    }
+
+    > div {
+      flex: 1 1 auto;
+      min-width: 0;
+    }
+  }
+
+  // align "selected" item icon with the dropdown option icons (6px) + keep on one line
+  // -> selector mirrors the pathfinder theme depth to win specificity over its 15px padding
+  .select2-container--pathfinder .select2-selection--single .select2-selection__rendered {
+    padding-left: 6px;
+    white-space: nowrap;
+
+    .fas {
+      vertical-align: middle;
+    }
+  }
+}
+
 // shortcuts dialog ===========================================================
 #pf-shortcuts-dialog{
   td kbd{

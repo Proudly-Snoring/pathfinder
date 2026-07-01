@@ -513,6 +513,18 @@ define([], () => {
                 text: 'smallest ships'
             }
         },
+        // '' == default "< 24h" (no stored lifetime type); ordered best -> worst
+        wormholeLifetimes: {
+            '':        { type: '',        class: 'txt-color txt-color-success',        text: '< 24h' },
+            wh_lt_4h:  { type: 'wh_lt_4h',class: 'txt-color txt-color-whLt4h',         text: '< 4h' },
+            wh_lt_1h:  { type: 'wh_lt_1h',class: 'txt-color txt-color-whLt1h',         text: '< 1h' },
+            wh_eol:    { type: 'wh_eol',  class: 'txt-color txt-color-whEol',          text: 'closure imminent' }
+        },
+        wormholeMassStatus: {
+            wh_fresh:    { type: 'wh_fresh',    class: 'txt-color txt-color-whMassFresh',    text: 'fresh' },
+            wh_reduced:  { type: 'wh_reduced',  class: 'txt-color txt-color-whMassReduced',  text: 'reduced' },
+            wh_critical: { type: 'wh_critical', class: 'txt-color txt-color-whMassCritical', text: 'critical' }
+        },
         // signature groups
         signatureGroups: {
             1: {
