@@ -1,32 +1,20 @@
 <script>
     // populate form with data from localStore
     $(document).ready(function(){
-        if({{routeSettings.wormholes}} == 0){
-            $('#form_wormholes').prop('checked', false);
-        }
-        if({{routeSettings.wormholesReduced}} == 0){
-            $('#form_wormholes_reduced').prop('checked', false);
-        }
-        if({{routeSettings.wormholesCritical}} == 0){
-            $('#form_wormholes_critical').prop('checked', false);
-        }
-        if({{routeSettings.wormholesEOL}} == 0){
-            $('#form_wormholes_eol').prop('checked', false);
-        }
         if({{routeSettings.stargates}} == 0){
             $('#form_stargates').prop('checked', false);
         }
         if({{routeSettings.jumpbridges}} == 0){
             $('#form_jumpbridges').prop('checked', false);
         }
+        if({{routeSettings.wormholes}} == 0){
+            $('#form_wormholes').prop('checked', false);
+        }
         if({{routeSettings.wormholesThera}} == 0){
             $('#form_connections_thera').prop('checked', false);
         }
         if({{routeSettings.endpointsBubble}} == 0){
             $('#form_endpoints_bubble').prop('checked', false);
-        }
-        if('{{routeSettings.wormholesSizeMin}}' !== ''){
-            $('#pf-route-dialog-size-select').val('{{routeSettings.wormholesSizeMin}}').change();
         }
     })
 </script>
@@ -70,40 +58,6 @@
                     <label class="col-xs-2 col-sm-3 control-label">Type</label>
 
                     <div class="col-sm-offset-1 col-xs-3 col-sm-8 checkbox checkbox-primary">
-                        <input id="form_wormholes" name="wormholes" value="1" type="checkbox" checked>
-                        <label for="form_wormholes">Wormholes
-                            <i class="fas fa-fw fa-question-circle pf-help-light" title="include wormhole connections"></i>
-                        </label>
-                    </div>
-
-                    <i class="fas fa-tree-child col-sm-offset-4 hidden-xs"></i>
-
-                    <div class="col-xs-4 checkbox checkbox-warning checkbox-circle">
-                        <input id="form_wormholes_reduced" name="wormholesReduced" value="1" type="checkbox" checked>
-                        <label for="form_wormholes_reduced">Stage 2 (reduced)
-                            <i class="fas fa-fw fa-question-circle pf-help-light" title="include reduced connections"></i>
-                        </label>
-                    </div>
-
-                    <i class="fas fa-tree-child col-sm-offset-4 hidden-xs"></i>
-
-                    <div class="col-xs-3 checkbox checkbox-danger checkbox-circle">
-                        <input id="form_wormholes_critical" name="wormholesCritical" value="1" type="checkbox" checked>
-                        <label for="form_wormholes_critical">Stage 3 (critical)
-                            <i class="fas fa-fw fa-question-circle pf-help-light" title="include critical connections"></i>
-                        </label>
-                    </div>
-
-                    <i class="fas fa-tree-child col-sm-offset-4 hidden-xs"></i>
-
-                    <div class="col-xs-offset-9 col-xs-3 checkbox checkbox-danger">
-                        <input id="form_wormholes_eol" name="wormholesEOL" value="1" type="checkbox" checked>
-                        <label for="form_wormholes_eol">End of life (EOL)
-                            <i class="fas fa-fw fa-question-circle pf-help-light" title="include EOL connections"></i>
-                        </label>
-                    </div>
-
-                    <div class="col-xs-offset-2 col-sm-offset-4 col-xs-3 col-sm-8 checkbox checkbox-primary">
                         <input id="form_stargates" name="stargates" value="1" type="checkbox" checked>
                         <label for="form_stargates">Stargates
                             <i class="fas fa-fw fa-question-circle pf-help-light" title="include stargate connections"></i>
@@ -117,19 +71,40 @@
                         </label>
                     </div>
 
-                </div>
-            </div>
-
-            <div class="col-xs-6 col-sm-7">
-                <div class="form-group">
-                    <label for="{{routeDialogSizeSelectId}}" class="col-sm-2 control-label">Size min</label>
-                    <div class="col-sm-10">
-                        <select name="wormholesSizeMin" id="{{routeDialogSizeSelectId}}" class="form-control {{select2Class}}">
-                            {{#sizeOptions}}
-                            <option value="{{id}}">{{name}}</option>
-                            {{/sizeOptions}}
-                        </select>
+                    <div class="col-sm-offset-4 col-xs-3 col-sm-8 checkbox checkbox-primary">
+                        <input id="form_wormholes" name="wormholes" value="1" type="checkbox" checked>
+                        <label for="form_wormholes">Wormholes
+                            <i class="fas fa-fw fa-question-circle pf-help-light" title="include wormhole connections"></i>
+                        </label>
                     </div>
+
+                    <div class="col-sm-offset-4 col-xs-12 col-sm-8 pf-route-wh-options">
+                        <div class="form-group">
+                            <label for="{{routeDialogLifetimeSelectId}}">Lifetime <i class="fas fa-fw fa-question-circle pf-help-light" title="minimum wormhole lifetime to include"></i></label>
+                            <div>
+                                <select name="wormholesLifetimeMin" id="{{routeDialogLifetimeSelectId}}" class="form-control {{select2Class}}">
+                                    {{#lifetimeOptions}}<option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>{{/lifetimeOptions}}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="{{routeDialogMassSelectId}}">Mass <i class="fas fa-fw fa-question-circle pf-help-light" title="minimum wormhole mass status to include"></i></label>
+                            <div>
+                                <select name="wormholesMassMin" id="{{routeDialogMassSelectId}}" class="form-control {{select2Class}}">
+                                    {{#massOptions}}<option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>{{/massOptions}}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="{{routeDialogSizeSelectId}}">Size <i class="fas fa-fw fa-question-circle pf-help-light" title="minimum wormhole size to include"></i></label>
+                            <div>
+                                <select name="wormholesSizeMin" id="{{routeDialogSizeSelectId}}" class="form-control {{select2Class}}">
+                                    {{#sizeOptions}}<option value="{{id}}" {{#selected}}selected{{/selected}}>{{name}}</option>{{/sizeOptions}}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 

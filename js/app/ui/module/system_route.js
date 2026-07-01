@@ -242,10 +242,11 @@ define([
                                 // get current row data (important!)
                                 // -> "rowData" param is not current state, values are "on createCell()" state
                                 rowData = tableApi.row( $(cell).parents('tr')).data();
-                                let routeData = module.getRouteRequestDataFromRowData(rowData, module._systemData.mapId, module._routeSettings);
+                                let routeData = module.getRouteRequestDataFromRowData(rowData, module._routeSettings);
 
                                 // overwrite some params
                                 routeData.skipSearch = 0;
+                                routeData.forceSearch = 1; // user-initiated refresh -> bypass server cache
 
                                 let requestData = {
                                     routeData: [routeData]
@@ -501,16 +502,14 @@ define([
                 systemFromData:     (rowData.hasOwnProperty('systemFromData'))      ? rowData.systemFromData        : {},
                 systemToData:       (rowData.hasOwnProperty('systemToData'))        ? rowData.systemToData          : {},
                 skipSearch:         (rowData.hasOwnProperty('skipSearch'))          ? rowData.skipSearch        | 0 : 0,
-                stargates:          (rowData.hasOwnProperty('stargates'))           ? rowData.stargates         | 0 : routeSettings.stargates,
-                jumpbridges:        (rowData.hasOwnProperty('jumpbridges'))         ? rowData.jumpbridges       | 0 : routeSettings.jumpbridges,
-                wormholes:          (rowData.hasOwnProperty('wormholes'))           ? rowData.wormholes         | 0 : routeSettings.wormholes,
-                wormholesReduced:   (rowData.hasOwnProperty('wormholesReduced'))    ? rowData.wormholesReduced  | 0 : routeSettings.wormholesReduced,
-                wormholesCritical:  (rowData.hasOwnProperty('wormholesCritical'))   ? rowData.wormholesCritical | 0 : routeSettings.wormholesCritical,
-                wormholesEOL:       (rowData.hasOwnProperty('wormholesEOL'))        ? rowData.wormholesEOL      | 0 : routeSettings.wormholesEOL,
-                wormholesThera:     (rowData.hasOwnProperty('wormholesThera'))      ? rowData.wormholesThera    | 0 : routeSettings.wormholesThera,
-                wormholesSizeMin:   (rowData.hasOwnProperty('wormholesSizeMin'))    ? rowData.wormholesSizeMin      : routeSettings.wormholesSizeMin,
-                excludeTypes:       (rowData.hasOwnProperty('excludeTypes'))        ? rowData.excludeTypes          : routeSettings.excludeTypes,
-                endpointsBubble:    (rowData.hasOwnProperty('endpointsBubble'))     ? rowData.endpointsBubble   | 0 : routeSettings.endpointsBubble,
+                stargates:            (rowData.hasOwnProperty('stargates'))              ? rowData.stargates           | 0 : routeSettings.stargates,
+                jumpbridges:          (rowData.hasOwnProperty('jumpbridges'))            ? rowData.jumpbridges         | 0 : routeSettings.jumpbridges,
+                wormholes:            (rowData.hasOwnProperty('wormholes'))              ? rowData.wormholes           | 0 : routeSettings.wormholes,
+                wormholesThera:       (rowData.hasOwnProperty('wormholesThera'))         ? rowData.wormholesThera      | 0 : routeSettings.wormholesThera,
+                wormholesLifetimeMin: (rowData.hasOwnProperty('wormholesLifetimeMin'))   ? rowData.wormholesLifetimeMin    : (routeSettings.wormholesLifetimeMin != null ? routeSettings.wormholesLifetimeMin : 'wh_lt_4h'),
+                wormholesMassMin:     (rowData.hasOwnProperty('wormholesMassMin'))       ? rowData.wormholesMassMin        : (routeSettings.wormholesMassMin     != null ? routeSettings.wormholesMassMin     : 'wh_reduced'),
+                wormholesSizeMin:     (rowData.hasOwnProperty('wormholesSizeMin'))       ? rowData.wormholesSizeMin        : (routeSettings.wormholesSizeMin     || 'wh_jump_mass_m'),
+                endpointsBubble:      (rowData.hasOwnProperty('endpointsBubble'))        ? rowData.endpointsBubble     | 0 : routeSettings.endpointsBubble,
                 connections:        (rowData.hasOwnProperty('connections'))         ? rowData.connections.value | 0 : 0,
                 flag:               (rowData.hasOwnProperty('flag'))                ? rowData.flag.value            : 'shortest'
             };
@@ -546,7 +545,9 @@ define([
             let routeData = [];
 
             this._tableApi.rows().every(function(){
-                routeData.push(module.getRouteRequestDataFromRowData(this.data(), module._systemData.mapId));
+                let data = module.getRouteRequestDataFromRowData(this.data(), module._systemData.mapId);
+                data.forceSearch = 1; // user-initiated refresh -> bypass server cache
+                routeData.push(data);
             });
 
             this.getRouteData({routeData: routeData}, 'callbackAddRouteRows');
@@ -681,12 +682,10 @@ define([
                 stargates: routeData.stargates,
                 jumpbridges: routeData.jumpbridges,
                 wormholes: routeData.wormholes,
-                wormholesReduced: routeData.wormholesReduced,
-                wormholesCritical: routeData.wormholesCritical,
-                wormholesEOL: routeData.wormholesEOL,
                 wormholesThera: routeData.wormholesThera,
+                wormholesLifetimeMin: routeData.wormholesLifetimeMin,
+                wormholesMassMin: routeData.wormholesMassMin,
                 wormholesSizeMin: routeData.wormholesSizeMin,
-                excludeTypes: routeData.excludeTypes,
                 endpointsBubble: routeData.endpointsBubble,
                 connections: {
                     value: 0,
@@ -906,24 +905,38 @@ define([
                 // max count of "default" target systems
                 let maxSelectionLength = Init.routeSearch.maxDefaultCount;
 
+                let routeDefaults = {
+                    stargates: 1, jumpbridges: 1, wormholes: 1, wormholesThera: 1, endpointsBubble: 1,
+                    wormholesLifetimeMin: 'wh_lt_4h', wormholesMassMin: 'wh_reduced', wormholesSizeMin: 'wh_jump_mass_m'
+                };
+
+                let resolvedSettings = Object.assign({}, routeDefaults, routeSettingsOptions);
+
+                let buildLifetimeOptions = (selectedVal) => Object.entries(Init.wormholeLifetimes).map(([id, cfg]) => ({
+                    id: id, name: cfg.text, selected: id === selectedVal
+                }));
+                let buildMassOptions = (selectedVal) => Object.entries(Init.wormholeMassStatus).map(([id, cfg]) => ({
+                    id: id, name: cfg.text, selected: id === selectedVal
+                }));
+                let buildSizeOptions = (selectedVal) => MapUtil.allConnectionJumpMassTypes().map(type => ({
+                    id: type, name: type, selected: type === selectedVal
+                }));
+
                 let data = {
                     id: this._config.routeSettingsDialogId,
                     selectClass: this._config.systemDialogSelectClass,
                     systemSelectOptions: systemSelectOptions,
                     maxSelectionLength: maxSelectionLength,
-                    // new options
-                    routeSettings: routeSettingsOptions,
+                    routeSettings: resolvedSettings,
                     select2Class: Util.config.select2Class,
                     routeDialogSizeSelectId: this._config.routeDialogSizeSelectId,
-                    select2Class: Util.config.select2Class,
-                    sizeOptions: MapUtil.allConnectionJumpMassTypes().map(type => ({
-                        id: type,
-                        name: type,
-                        selected: false
-                    }))
+                    routeDialogLifetimeSelectId: this._config.routeDialogLifetimeSelectId,
+                    routeDialogMassSelectId: this._config.routeDialogMassSelectId,
+                    lifetimeOptions: buildLifetimeOptions(resolvedSettings.wormholesLifetimeMin),
+                    massOptions: buildMassOptions(resolvedSettings.wormholesMassMin),
+                    sizeOptions: buildSizeOptions(resolvedSettings.wormholesSizeMin)
                 };
-                console.log(data);
-                
+
                 requirejs(['text!templates/dialog/route_settings.html', 'mustache'], (template, Mustache) => {
                     let content = Mustache.render(template, data);
 
@@ -941,8 +954,7 @@ define([
                                 className: 'btn-success',
                                 callback: e => {
                                     let form = $(e.delegateTarget).find('form');
-                                    // get all system data from select2
-                                    
+
                                     let systemSelectData = form.find('.' + this._config.systemDialogSelectClass).select2('data');
                                     let systemsToData = [];
                                     if(systemSelectData.length > 0){
@@ -951,28 +963,21 @@ define([
                                     }else{
                                         Util.getLocalStore('map').removeItem(`${dialogData.mapId}.routes`);
                                     }
-                                    
-                                    // route settings additions
+
                                     let routeSettingsData = $(form).getFormValues();
-                                    if(
-                                        routeSettingsData
-                                    ){
+                                    if(routeSettingsData){
                                         let routeSettings = {
-                                            stargates: routeSettingsData.hasOwnProperty('stargates') ? parseInt(routeSettingsData.stargates) : 0,
-                                            jumpbridges: routeSettingsData.hasOwnProperty('jumpbridges') ? parseInt(routeSettingsData.jumpbridges) : 0,
-                                            wormholes: routeSettingsData.hasOwnProperty('wormholes') ? parseInt(routeSettingsData.wormholes) : 0,
-                                            wormholesReduced: routeSettingsData.hasOwnProperty('wormholesReduced') ? parseInt(routeSettingsData.wormholesReduced) : 0,
-                                            wormholesCritical: routeSettingsData.hasOwnProperty('wormholesCritical') ? parseInt(routeSettingsData.wormholesCritical) : 0,
-                                            wormholesEOL: routeSettingsData.hasOwnProperty('wormholesEOL') ? parseInt(routeSettingsData.wormholesEOL) : 0,
-                                            wormholesThera: routeSettingsData.hasOwnProperty('wormholesThera') ? parseInt(routeSettingsData.wormholesThera) : 0,
-                                            wormholesSizeMin: routeSettingsData.wormholesSizeMin || '',
-                                            excludeTypes: SystemRouteModule.getLowerSizeConnectionTypes(routeSettingsData.wormholesSizeMin),
-                                            endpointsBubble: routeSettingsData.hasOwnProperty('endpointsBubble') ? parseInt(routeSettingsData.endpointsBubble) : 0,
+                                            stargates:            routeSettingsData.hasOwnProperty('stargates')       ? parseInt(routeSettingsData.stargates)       : 0,
+                                            jumpbridges:          routeSettingsData.hasOwnProperty('jumpbridges')     ? parseInt(routeSettingsData.jumpbridges)     : 0,
+                                            wormholes:            routeSettingsData.hasOwnProperty('wormholes')       ? parseInt(routeSettingsData.wormholes)       : 0,
+                                            wormholesThera:       routeSettingsData.hasOwnProperty('wormholesThera')  ? parseInt(routeSettingsData.wormholesThera)  : 0,
+                                            wormholesLifetimeMin: routeSettingsData.wormholesLifetimeMin != null ? routeSettingsData.wormholesLifetimeMin : 'wh_lt_4h',
+                                            wormholesMassMin:     routeSettingsData.wormholesMassMin     != null ? routeSettingsData.wormholesMassMin     : 'wh_reduced',
+                                            wormholesSizeMin:     routeSettingsData.wormholesSizeMin     || 'wh_jump_mass_m',
+                                            endpointsBubble:      routeSettingsData.hasOwnProperty('endpointsBubble')? parseInt(routeSettingsData.endpointsBubble) : 0,
                                         };
                                         Util.getLocalStore('map').setItem(`${dialogData.mapId}.routeSettings`, routeSettings);
                                     }
-                                    // end route settings additions
-
 
                                     this.showNotify({title: 'Route settings stored', type: 'success'});
 
@@ -983,14 +988,19 @@ define([
                         }
                     });
 
-                    settingsDialog.on('shown.bs.modal', e => {
+                    settingsDialog.on('show.bs.modal', e => {
+                        $(e.target).initTooltips();
+                        this.setDialogObserver($(e.target));
+                    });
 
-                        // init default system select ---------------------------------------------------------------------
+                    settingsDialog.on('shown.bs.modal', e => {
+                        // init default system select
                         // -> add some delay until modal transition has finished
                         let systemTargetSelect = $(e.target).find('.' + this._config.systemDialogSelectClass);
                         systemTargetSelect.delay(240).initSystemSelect({key: 'id', maxSelectionLength: maxSelectionLength});
 
-                        // init connection jump size select -------------------------------------------------------------------
+                        $(e.target).find('#' + this._config.routeDialogLifetimeSelectId).initConnectionLifetimeSelect();
+                        $(e.target).find('#' + this._config.routeDialogMassSelectId).initConnectionMassSelect();
                         $(e.target).find('#' + this._config.routeDialogSizeSelectId).initConnectionSizeSelect();
                     });
 
@@ -1023,13 +1033,19 @@ define([
                 selectClass: this._config.systemDialogSelectClass,
                 routeDialogMapSelectId: this._config.routeDialogMapSelectId,
                 routeDialogSizeSelectId: this._config.routeDialogSizeSelectId,
+                routeDialogLifetimeSelectId: this._config.routeDialogLifetimeSelectId,
+                routeDialogMassSelectId: this._config.routeDialogMassSelectId,
                 systemFromData: dialogData.systemFromData,
                 systemToData: dialogData.systemToData,
                 mapSelectOptions: mapSelectOptions,
+                lifetimeOptions: Object.entries(Init.wormholeLifetimes).map(([id, cfg]) => ({
+                    id: id, name: cfg.text, selected: id === 'wh_lt_4h'
+                })),
+                massOptions: Object.entries(Init.wormholeMassStatus).map(([id, cfg]) => ({
+                    id: id, name: cfg.text, selected: id === 'wh_reduced'
+                })),
                 sizeOptions: MapUtil.allConnectionJumpMassTypes().map(type => ({
-                    id: type,
-                    name: type,
-                    selected: false
+                    id: type, name: type, selected: type === 'wh_jump_mass_m'
                 }))
             };
 
@@ -1080,16 +1096,14 @@ define([
                                                 systemId: parseInt(systemSelectData[0].id),
                                                 name: systemSelectData[0].text
                                             },
-                                            stargates: routeDialogData.hasOwnProperty('stargates') ? parseInt(routeDialogData.stargates) : 0,
-                                            jumpbridges: routeDialogData.hasOwnProperty('jumpbridges') ? parseInt(routeDialogData.jumpbridges) : 0,
-                                            wormholes: routeDialogData.hasOwnProperty('wormholes') ? parseInt(routeDialogData.wormholes) : 0,
-                                            wormholesReduced: routeDialogData.hasOwnProperty('wormholesReduced') ? parseInt(routeDialogData.wormholesReduced) : 0,
-                                            wormholesCritical: routeDialogData.hasOwnProperty('wormholesCritical') ? parseInt(routeDialogData.wormholesCritical) : 0,
-                                            wormholesEOL: routeDialogData.hasOwnProperty('wormholesEOL') ? parseInt(routeDialogData.wormholesEOL) : 0,
-                                            wormholesThera: routeDialogData.hasOwnProperty('wormholesThera') ? parseInt(routeDialogData.wormholesThera) : 0,
-                                            wormholesSizeMin: routeDialogData.wormholesSizeMin || '',
-                                            excludeTypes: SystemRouteModule.getLowerSizeConnectionTypes(routeDialogData.wormholesSizeMin),
-                                            endpointsBubble: routeDialogData.hasOwnProperty('endpointsBubble') ? parseInt(routeDialogData.endpointsBubble) : 0,
+                                            stargates:            routeDialogData.hasOwnProperty('stargates')      ? parseInt(routeDialogData.stargates)      : 0,
+                                            jumpbridges:          routeDialogData.hasOwnProperty('jumpbridges')    ? parseInt(routeDialogData.jumpbridges)    : 0,
+                                            wormholes:            routeDialogData.hasOwnProperty('wormholes')      ? parseInt(routeDialogData.wormholes)      : 0,
+                                            wormholesThera:       routeDialogData.hasOwnProperty('wormholesThera') ? parseInt(routeDialogData.wormholesThera) : 0,
+                                            wormholesLifetimeMin: routeDialogData.wormholesLifetimeMin != null ? routeDialogData.wormholesLifetimeMin : 'wh_lt_4h',
+                                            wormholesMassMin:     routeDialogData.wormholesMassMin     != null ? routeDialogData.wormholesMassMin     : 'wh_reduced',
+                                            wormholesSizeMin:     routeDialogData.wormholesSizeMin     || 'wh_jump_mass_m',
+                                            endpointsBubble:      routeDialogData.hasOwnProperty('endpointsBubble')? parseInt(routeDialogData.endpointsBubble): 0,
                                             flag: routeDialogData.hasOwnProperty('flag') ? routeDialogData.flag : 'shortest'
                                         }]
                                     };
@@ -1104,19 +1118,17 @@ define([
                 findRouteDialog.on('show.bs.modal', e => {
                     $(e.target).initTooltips();
 
-                    // init some dialog/form observer
                     this.setDialogObserver($(e.target));
 
-                    // init map select ------------------------------------------------------------------------------------
                     $(e.target).find('#' + this._config.routeDialogMapSelectId).initMapSelect();
 
-                    // init connection jump size select -------------------------------------------------------------------
+                    $(e.target).find('#' + this._config.routeDialogLifetimeSelectId).initConnectionLifetimeSelect();
+                    $(e.target).find('#' + this._config.routeDialogMassSelectId).initConnectionMassSelect();
                     $(e.target).find('#' + this._config.routeDialogSizeSelectId).initConnectionSizeSelect();
                 });
 
-
                 findRouteDialog.on('shown.bs.modal', e => {
-                    // init system select live  search --------------------------------------------------------------------
+                    // init system select live  search
                     // -> add some delay until modal transition has finished
                     let systemTargetSelect = $(e.target).find('.' + this._config.systemDialogSelectClass);
                     systemTargetSelect.delay(240).initSystemSelect({key: 'id'});
@@ -1132,55 +1144,26 @@ define([
          * @param routeDialog
          */
         setDialogObserver(routeDialog){
-            let wormholeCheckbox            = routeDialog.find('input[type="checkbox"][name="wormholes"]');
-            let wormholeReducedCheckbox     = routeDialog.find('input[type="checkbox"][name="wormholesReduced"]');
-            let wormholeCriticalCheckbox    = routeDialog.find('input[type="checkbox"][name="wormholesCritical"]');
-            let wormholeEolCheckbox         = routeDialog.find('input[type="checkbox"][name="wormholesEOL"]');
-            let wormholeTheraCheckbox       = routeDialog.find('input[type="checkbox"][name="wormholesThera"]');
-            let wormholeSizeSelect          = routeDialog.find('#' + this._config.routeDialogSizeSelectId);
+            let wormholeCheckbox      = routeDialog.find('input[type="checkbox"][name="wormholes"]');
+            let wormholeTheraCheckbox = routeDialog.find('input[type="checkbox"][name="wormholesThera"]');
+            let lifetimeSelect        = routeDialog.find('#' + this._config.routeDialogLifetimeSelectId);
+            let massSelect            = routeDialog.find('#' + this._config.routeDialogMassSelectId);
+            let sizeSelect            = routeDialog.find('#' + this._config.routeDialogSizeSelectId);
 
-            // store current "checked" state for each box ---------------------------------------------
-            let storeCheckboxStatus = () => {
-                wormholeReducedCheckbox.data('selectState', wormholeReducedCheckbox.prop('checked'));
-                wormholeCriticalCheckbox.data('selectState', wormholeCriticalCheckbox.prop('checked'));
-                wormholeEolCheckbox.data('selectState', wormholeEolCheckbox.prop('checked'));
-                wormholeTheraCheckbox.data('selectState', wormholeTheraCheckbox.prop('checked'));
-            };
-
-            // on wormhole checkbox change ------------------------------------------------------------
             let onWormholeCheckboxChange = e => {
-                if($(e.target).is(':checked')){
-                    wormholeSizeSelect.prop('disabled', false);
-
-                    wormholeReducedCheckbox.prop('disabled', false);
-                    wormholeCriticalCheckbox.prop('disabled', false);
-                    wormholeEolCheckbox.prop('disabled', false);
-                    wormholeTheraCheckbox.prop('disabled', false);
-
-                    wormholeReducedCheckbox.prop('checked', wormholeReducedCheckbox.data('selectState'));
-                    wormholeCriticalCheckbox.prop('checked', wormholeCriticalCheckbox.data('selectState'));
-                    wormholeEolCheckbox.prop('checked', wormholeEolCheckbox.data('selectState'));
-                    wormholeTheraCheckbox.prop('checked', wormholeTheraCheckbox.data('selectState'));
-                }else{
-                    wormholeSizeSelect.prop('disabled', true);
-
-                    storeCheckboxStatus();
-
-                    wormholeReducedCheckbox.prop('checked', false);
-                    wormholeReducedCheckbox.prop('disabled', true);
-                    wormholeCriticalCheckbox.prop('checked', false);
-                    wormholeCriticalCheckbox.prop('disabled', true);
-                    wormholeEolCheckbox.prop('checked', false);
-                    wormholeEolCheckbox.prop('disabled', true);
+                let checked = $(e.target).is(':checked');
+                lifetimeSelect.prop('disabled', !checked);
+                massSelect.prop('disabled', !checked);
+                sizeSelect.prop('disabled', !checked);
+                wormholeTheraCheckbox.prop('disabled', !checked);
+                if(!checked){
                     wormholeTheraCheckbox.prop('checked', false);
-                    wormholeTheraCheckbox.prop('disabled', true);
                 }
             };
 
             wormholeCheckbox.on('change', onWormholeCheckboxChange);
 
-            // initial checkbox check
-            storeCheckboxStatus();
+            // initial state
             onWormholeCheckboxChange({target: wormholeCheckbox});
         }
 
@@ -1189,25 +1172,6 @@ define([
          */
         init(){
             super.init();
-        }
-
-        /**
-         * get all jump mass related connection types that have a lower "jumpMassMin" than connectionType
-         * @param connectionType
-         * @returns {Array}
-         */
-        static getLowerSizeConnectionTypes(connectionType){
-            let lowerSizeTypes = [];
-            let jumpMassMin = Util.getObjVal(Init.wormholeSizes, connectionType + '.jumpMassMin') || 0;
-
-            if(jumpMassMin){
-                for(let [type, data] of Object.entries(Init.wormholeSizes)){
-                    if(data.jumpMassMin < jumpMassMin){
-                        lowerSizeTypes.push(type);
-                    }
-                }
-            }
-            return lowerSizeTypes;
         }
 
         /**
@@ -1252,6 +1216,8 @@ define([
 
         routeDialogMapSelectId: 'pf-route-dialog-map-select',                   // id for "map" select
         routeDialogSizeSelectId: 'pf-route-dialog-size-select',                 // id for "wh size" select
+        routeDialogLifetimeSelectId: 'pf-route-dialog-lifetime-select',         // id for "wh lifetime" select
+        routeDialogMassSelectId: 'pf-route-dialog-mass-select',                 // id for "wh mass" select
 
         // table
         systemInfoRoutesTableClass: 'pf-system-route-table',                    // class for route tables

@@ -263,24 +263,13 @@ define([
             if(data.loading) return data.text;
             if(data.placeholder) return data.placeholder;
 
-            let connectionClass = MapUtil.getConnectionInfo(data.text, 'cssClass');
-
             let label = Util.getObjVal(Init.wormholeSizes, data.text + '.label') || '?';
-            let text = Util.getObjVal(Init.wormholeSizes, data.text + '.text') || 'all';
+            let text  = Util.getObjVal(Init.wormholeSizes, data.text + '.text')  || 'all';
 
-            let markup = '<div class="clearfix">';
-            markup += '<div class="col-xs-1">';
-            markup += '<i class="fas fa-char fa-fw" data-char-content="' + label + '"></i>';
-            markup += '</div>';
-            markup += '<div class="col-xs-3">';
-            markup += '<div class="pf-fake-connection ' + connectionClass + '"></div>';
-            markup += '</div>';
-            markup += '<div class="col-xs-8">';
-            markup += text;
-            markup += '</div>';
-            markup += '</div>';
-
-            return $(markup);
+            let $span = $('<span>');
+            $('<i class="fas fa-char fa-fw" data-char-content="' + label + '"></i>').appendTo($span);
+            $span.append(document.createTextNode('   ' + text));
+            return $span;
         };
 
         options.templateSelection = formatConnectionSizeResultData;
@@ -289,6 +278,60 @@ define([
         $.when(
             selectElement.select2(options)
         );
+    };
+
+    let formatDotData = configMap => data => {
+        if(data.loading)     return data.text;
+        if(data.placeholder) return data.placeholder;
+        let cfg = configMap[data.id] || {};
+        let $span = $('<span>');
+        $('<i class="fas fa-circle fa-fw ' + (cfg.class || '') + '"></i>').appendTo($span);
+        $span.append(document.createTextNode('   ' + (cfg.text || data.text)));
+        return $span;
+    };
+
+    /**
+     * init a select element as "select2" for wormhole lifetime types
+     * @param options
+     */
+    $.fn.initConnectionLifetimeSelect = function(options){
+        let selectElement = $(this);
+
+        let defaultConfig = {
+            dropdownParent: selectElement.parents('.modal-body'),
+            minimumResultsForSearch: Infinity,
+            width: '100%',
+            maxSelectionLength: 1
+        };
+        options = $.extend({}, defaultConfig, options);
+
+        let fmt = formatDotData(Init.wormholeLifetimes);
+        options.templateResult    = fmt;
+        options.templateSelection = fmt;
+
+        $.when(selectElement.select2(options));
+    };
+
+    /**
+     * init a select element as "select2" for wormhole mass status types
+     * @param options
+     */
+    $.fn.initConnectionMassSelect = function(options){
+        let selectElement = $(this);
+
+        let defaultConfig = {
+            dropdownParent: selectElement.parents('.modal-body'),
+            minimumResultsForSearch: Infinity,
+            width: '100%',
+            maxSelectionLength: 1
+        };
+        options = $.extend({}, defaultConfig, options);
+
+        let fmt = formatDotData(Init.wormholeMassStatus);
+        options.templateResult    = fmt;
+        options.templateSelection = fmt;
+
+        $.when(selectElement.select2(options));
     };
 
     /**

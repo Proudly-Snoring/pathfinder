@@ -35,9 +35,11 @@ class Route extends AbstractRestController {
 
     /**
      * cache time for dynamic jump data (e.g. W-Space systems, Jumpbridges. ...)
+     * -> safe to keep long: both the route-result cache and the inner jump-data query are keyed on a
+     *    connection "signature" (see getConnectionSignature()), so any connection change busts them
      * @var int
      */
-    private $dynamicJumpDataCacheTime = 10;
+    private $dynamicJumpDataCacheTime = 300;
 
     /**
      * cache time for Thera connections from eve-scout.com
@@ -107,14 +109,70 @@ class Route extends AbstractRestController {
     }
 
     /**
+     * get a signature that changes whenever any route-relevant connection in $mapIds changes
+     * -> used to make the route-result cache and the inner jump-data query cache connection-state-aware,
+     *    so a long TTL stays correct: any connection add/delete/edit yields a new key -> fresh result
+     * -> COUNT covers insert/delete; CRC32 content sum covers edits to any field the route query filters
+     *    on (scope, type, source, target, endpoint types) - independent of the 1s "updated" resolution
+     * -> runs uncached (ttl 0) so it always reflects current DB state; one small indexed aggregate
+     * @param array $mapIds
+     * @return string
+     * @throws \Exception
+     */
+    private function getConnectionSignature($mapIds = []) : string {
+        // make sure, mapIds are integers (protect against SQL injections)
+        $mapIds = array_unique( array_map('intval', $mapIds), SORT_NUMERIC);
+
+        if( empty($mapIds) ){
+            return '0';
+        }
+
+        $whereMapIdsQuery = (count($mapIds) == 1) ? " = " . reset($mapIds) : " IN (" . implode(', ', $mapIds) . ")";
+
+        // SUM alone is not collision-resistant (compensating edits can preserve it); combine it with
+        // BIT_XOR so a collision must preserve BOTH aggregates simultaneously -> astronomically unlikely
+        $query = "SELECT
+                    COUNT(*) num,
+                    COALESCE(SUM(CRC32(CONCAT_WS('#',
+                        `connection`.`id`,
+                        `connection`.`scope`,
+                        `connection`.`type`,
+                        `connection`.`source`,
+                        `connection`.`target`,
+                        `connection`.`sourceEndpointType`,
+                        `connection`.`targetEndpointType`
+                    ))), 0) checksum,
+                    COALESCE(BIT_XOR(CRC32(CONCAT_WS('#',
+                        `connection`.`id`,
+                        `connection`.`scope`,
+                        `connection`.`type`,
+                        `connection`.`source`,
+                        `connection`.`target`,
+                        `connection`.`sourceEndpointType`,
+                        `connection`.`targetEndpointType`
+                    ))), 0) xorsum
+                  FROM
+                    `connection`
+                  WHERE
+                    `connection`.`active` = 1 AND
+                    `connection`.`mapId` " . $whereMapIdsQuery;
+
+        $rows = $this->getDB()->exec($query, null, 0);
+        $row = $rows[0] ?? ['num' => 0, 'checksum' => 0, 'xorsum' => 0];
+
+        return $row['num'] . '-' . $row['checksum'] . '-' . $row['xorsum'];
+    }
+
+    /**
      * set/add dynamic system jump data for specific "mapId"´s
      * -> this data is dynamic and could change on any map change
      * -> (e.g. new system added, connection added/updated, ...)
      * @param array $mapIds
      * @param array $filterData
+     * @param string|null $signature pre-computed connection signature -> avoids recomputing it per call
      * @throws \Exception
      */
-    private function setDynamicJumpData($mapIds = [], $filterData = []){
+    private function setDynamicJumpData($mapIds = [], $filterData = [], $signature = null){
         // make sure, mapIds are integers (protect against SQL injections)
         $mapIds = array_unique( array_map('intval', $mapIds), SORT_NUMERIC);
 
@@ -127,7 +185,6 @@ class Route extends AbstractRestController {
             $includeScopes = [];
             $includeTypes = [];
             $excludeTypes = [];
-            $includeEOL = true;
 
             $excludeEndpointTypes = [];
 
@@ -149,21 +206,33 @@ class Route extends AbstractRestController {
                 $includeScopes[] = 'wh';
                 $includeTypes[] = 'wh_fresh';
 
-
-                if( $filterData['wormholesReduced'] === true ){
+                // mass: include reduced/critical up to the selected minimum
+                $massMin = $filterData['wormholesMassMin'];
+                if( in_array($massMin, ['wh_reduced', 'wh_critical'], true) ){
                     $includeTypes[] = 'wh_reduced';
                 }
-
-                if( $filterData['wormholesCritical'] === true ){
+                if( $massMin === 'wh_critical' ){
                     $includeTypes[] = 'wh_critical';
                 }
 
-                if( $filterData['wormholesEOL'] === false ){
-                    $includeEOL = false;
+                // lifetime: exclude buckets worse than the selected minimum ('' == < 24h => exclude all)
+                $lifetimeOrder = ['wh_lt_4h', 'wh_lt_1h', 'wh_eol'];
+                $lifetimeMin   = $filterData['wormholesLifetimeMin'];
+                $lifetimeIdx   = array_search($lifetimeMin, $lifetimeOrder, true);
+                if( $lifetimeMin === '' ){
+                    $startExclude = 0;                          // '' => exclude all worse buckets
+                }elseif( $lifetimeIdx === false ){
+                    $startExclude = count($lifetimeOrder);      // unknown value => no lifetime filter
+                }else{
+                    $startExclude = $lifetimeIdx + 1;
                 }
+                $excludeTypes  = array_merge($excludeTypes, array_slice($lifetimeOrder, $startExclude));
 
-                if(!empty($filterData['excludeTypes'])){
-                    $excludeTypes = $filterData['excludeTypes'];
+                // size: exclude sizes smaller than the selected minimum
+                $sizeOrder = ['wh_jump_mass_s', 'wh_jump_mass_m', 'wh_jump_mass_l', 'wh_jump_mass_xl'];
+                $sIdx = array_search($filterData['wormholesSizeMin'], $sizeOrder, true);
+                if( $sIdx !== false && $sIdx > 0 ){
+                    $excludeTypes = array_merge($excludeTypes, array_slice($sizeOrder, 0, $sIdx));
                 }
             }
 
@@ -182,10 +251,6 @@ class Route extends AbstractRestController {
 
                 if( !empty($includeTypes) ){
                     $whereQuery .= " `connection`.`type` REGEXP '" . implode("|", $includeTypes) . "' AND ";
-                }
-
-                if(!$includeEOL){
-                    $whereQuery .= " `connection`.`eolUpdated` IS NULL AND ";
                 }
 
                 if( !empty($excludeEndpointTypes) ){
@@ -212,6 +277,11 @@ class Route extends AbstractRestController {
                               `connection`.`active` = 1 AND 
                               `connection`.`mapId` " . $whereMapIdsQuery . "
                               ";
+
+                // make this cached query connection-state-aware: the signature changes when any
+                // relevant connection changes, so the appended comment busts F3's SQL query cache
+                // (which hashes the raw SQL text) instead of serving a stale graph for the whole TTL
+                $query .= "\n/* sig:" . ($signature ?? $this->getConnectionSignature($mapIds)) . " */";
 
                 $rows = $this->getDB()->exec($query,  null, $this->dynamicJumpDataCacheTime);
 
@@ -491,18 +561,19 @@ class Route extends AbstractRestController {
      * @param int $searchDepth
      * @param array $mapIds
      * @param array $filterData
+     * @param string|null $signature pre-computed connection signature -> threaded down to avoid recomputing
      * @return array
      * @throws \Exception
      */
-    public function searchRoute(int $systemFromId, int $systemToId, $searchDepth = 0, array $mapIds = [], array $filterData = []) : array {
+    public function searchRoute(int $systemFromId, int $systemToId, $searchDepth = 0, array $mapIds = [], array $filterData = [], $signature = null) : array {
         // search root by ESI API
-        $routeData = $this->searchRouteESI($systemFromId, $systemToId, $searchDepth, $mapIds, $filterData);
+        $routeData = $this->searchRouteESI($systemFromId, $systemToId, $searchDepth, $mapIds, $filterData, $signature);
 
         // Endpoint return http:404 in case no route find (e.g. from inside a wh)
         // we thread that error "no route found" as a valid response! -> no fallback to custom search
         if(!empty($routeData['error']) && strtolower($routeData['error']) !== 'no route found'){
             // ESI route search has errors -> fallback to custom search implementation
-            $routeData = $this->searchRouteCustom($systemFromId, $systemToId, $searchDepth, $mapIds, $filterData);
+            $routeData = $this->searchRouteCustom($systemFromId, $systemToId, $searchDepth, $mapIds, $filterData, $signature);
         }
 
         return $routeData;
@@ -515,10 +586,11 @@ class Route extends AbstractRestController {
      * @param int $searchDepth
      * @param array $mapIds
      * @param array $filterData
+     * @param string|null $signature pre-computed connection signature
      * @return array
      * @throws \Exception
      */
-    private function searchRouteCustom(int $systemFromId, int $systemToId, $searchDepth = 0, array $mapIds = [], array $filterData = []) : array {
+    private function searchRouteCustom(int $systemFromId, int $systemToId, $searchDepth = 0, array $mapIds = [], array $filterData = [], $signature = null) : array {
         // reset all previous set jump data
         $this->resetJumpData();
 
@@ -534,7 +606,7 @@ class Route extends AbstractRestController {
             $this->setStaticJumpData();
 
             // add map specific data
-            $this->setDynamicJumpData($mapIds, $filterData);
+            $this->setDynamicJumpData($mapIds, $filterData, $signature);
 
             // add current Thera connections data
             if($filterData['wormholesThera']){
@@ -599,10 +671,11 @@ class Route extends AbstractRestController {
      * @param int $searchDepth
      * @param array $mapIds
      * @param array $filterData
+     * @param string|null $signature pre-computed connection signature
      * @return array
      * @throws \Exception
      */
-    private function searchRouteESI(int $systemFromId, int $systemToId, int $searchDepth = 0, array $mapIds = [], array $filterData = []) : array {
+    private function searchRouteESI(int $systemFromId, int $systemToId, int $searchDepth = 0, array $mapIds = [], array $filterData = [], $signature = null) : array {
         // reset all previous set jump data
         $this->resetJumpData();
 
@@ -621,7 +694,7 @@ class Route extends AbstractRestController {
             // prepare search data ------------------------------------------------------------------------------------
 
             // add map specific data
-            $this->setDynamicJumpData($mapIds, $filterData);
+            $this->setDynamicJumpData($mapIds, $filterData, $signature);
 
             // add current Thera connections data
             if($filterData['wormholesThera']){
@@ -722,14 +795,16 @@ class Route extends AbstractRestController {
      * @param $systemFrom
      * @param $systemTo
      * @param array $filterData
+     * @param string $signature connection-state signature -> busts the cache when connections change
      * @return string
      */
-    private function getRouteCacheKey($mapIds, $systemFrom, $systemTo, $filterData = []){
+    private function getRouteCacheKey($mapIds, $systemFrom, $systemTo, $filterData = [], $signature = ''){
 
         $keyParts = [
             implode('_', $mapIds),
             self::formatHiveKey($systemFrom),
-            self::formatHiveKey($systemTo)
+            self::formatHiveKey($systemTo),
+            $signature
         ];
 
         $keyParts += $filterData;
@@ -804,17 +879,15 @@ class Route extends AbstractRestController {
 
                 // search route with filter options
                 $filterData = [
-                    'stargates'             => (bool) ($routeData['stargates'] ?? false),
-                    'jumpbridges'           => (bool) ($routeData['jumpbridges'] ?? false),
-                    'wormholes'             => (bool) ($routeData['wormholes'] ?? false),
-                    'wormholesReduced'      => (bool) ($routeData['wormholesReduced'] ?? false),
-                    'wormholesCritical'     => (bool) ($routeData['wormholesCritical'] ?? false),
-                    'wormholesEOL'          => (bool) ($routeData['wormholesEOL'] ?? false),
-                    'wormholesThera'        => (bool) ($routeData['wormholesThera'] ?? false),
-                    'wormholesSizeMin'      => (string) ($routeData['wormholesSizeMin'] ?? ''),
-                    'excludeTypes'          => (array) ($routeData['excludeTypes'] ?? []),
-                    'endpointsBubble'       => (bool) ($routeData['endpointsBubble'] ?? false),
-                    'flag'                  => $routeData['flag'] ?? null
+                    'stargates'              => (bool) ($routeData['stargates'] ?? false),
+                    'jumpbridges'            => (bool) ($routeData['jumpbridges'] ?? false),
+                    'wormholes'              => (bool) ($routeData['wormholes'] ?? false),
+                    'wormholesThera'         => (bool) ($routeData['wormholesThera'] ?? false),
+                    'wormholesLifetimeMin'   => (string) ($routeData['wormholesLifetimeMin'] ?? 'wh_lt_4h'),
+                    'wormholesMassMin'       => (string) ($routeData['wormholesMassMin']     ?? 'wh_reduced'),
+                    'wormholesSizeMin'       => (string) ($routeData['wormholesSizeMin']     ?? 'wh_jump_mass_m'),
+                    'endpointsBubble'        => (bool) ($routeData['endpointsBubble'] ?? false),
+                    'flag'                   => $routeData['flag'] ?? null
                 ];
 
                 $returnRoutData = [
@@ -837,18 +910,26 @@ class Route extends AbstractRestController {
                     $systemTo       = $routeData['systemToData']['name'];
                     $systemToId     = (int)$routeData['systemToData']['systemId'];
 
+                    // connection-state signature -> makes the cache key change on any connection edit
+                    $connectionSignature = $this->getConnectionSignature($mapIds);
+
                     $cacheKey = $this->getRouteCacheKey(
                         $mapIds,
                         $systemFrom,
                         $systemTo,
-                        $filterData
+                        $filterData,
+                        $connectionSignature
                     );
 
-                    if($f3->exists($cacheKey, $cachedData)){
+                    // user-initiated refresh -> force a fresh calculation, ignore the cached route
+                    // (still (re)writes the cache below so later non-forced requests get the fresh result)
+                    $forceSearch = (bool) ($routeData['forceSearch'] ?? false);
+
+                    if(!$forceSearch && $f3->exists($cacheKey, $cachedData)){
                         // get data from cache
                         $returnRoutData = $cachedData;
                     }else{
-                        $foundRoutData = $this->searchRoute($systemFromId, $systemToId, 0, $mapIds, $filterData);
+                        $foundRoutData = $this->searchRoute($systemFromId, $systemToId, 0, $mapIds, $filterData, $connectionSignature);
 
                         $returnRoutData = array_merge($returnRoutData, $foundRoutData);
 
@@ -857,7 +938,14 @@ class Route extends AbstractRestController {
                             isset($returnRoutData['routePossible']) &&
                             $returnRoutData['routePossible'] === true
                         ){
-                            $f3->set($cacheKey, $returnRoutData, $this->dynamicJumpDataCacheTime);
+                            // Thera hops come from an external source (setTheraJumpData) and are NOT in the
+                            // connection table -> the signature can't see them; cap the TTL so a Thera hole
+                            // appearing/collapsing is not hidden behind the long dynamic cache
+                            $cacheTTL = $filterData['wormholesThera']
+                                ? min($this->dynamicJumpDataCacheTime, $this->theraJumpDataCacheTime)
+                                : $this->dynamicJumpDataCacheTime;
+
+                            $f3->set($cacheKey, $returnRoutData, $cacheTTL);
                         }
                     }
                 }
