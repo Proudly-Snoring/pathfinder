@@ -129,6 +129,8 @@ class Route extends AbstractRestController {
 
         $whereMapIdsQuery = (count($mapIds) == 1) ? " = " . reset($mapIds) : " IN (" . implode(', ', $mapIds) . ")";
 
+        // SUM alone is not collision-resistant (compensating edits can preserve it); combine it with
+        // BIT_XOR so a collision must preserve BOTH aggregates simultaneously -> astronomically unlikely
         $query = "SELECT
                     COUNT(*) num,
                     COALESCE(SUM(CRC32(CONCAT_WS('#',
@@ -139,7 +141,16 @@ class Route extends AbstractRestController {
                         `connection`.`target`,
                         `connection`.`sourceEndpointType`,
                         `connection`.`targetEndpointType`
-                    ))), 0) checksum
+                    ))), 0) checksum,
+                    COALESCE(BIT_XOR(CRC32(CONCAT_WS('#',
+                        `connection`.`id`,
+                        `connection`.`scope`,
+                        `connection`.`type`,
+                        `connection`.`source`,
+                        `connection`.`target`,
+                        `connection`.`sourceEndpointType`,
+                        `connection`.`targetEndpointType`
+                    ))), 0) xorsum
                   FROM
                     `connection`
                   WHERE
@@ -147,9 +158,9 @@ class Route extends AbstractRestController {
                     `connection`.`mapId` " . $whereMapIdsQuery;
 
         $rows = $this->getDB()->exec($query, null, 0);
-        $row = $rows[0] ?? ['num' => 0, 'checksum' => 0];
+        $row = $rows[0] ?? ['num' => 0, 'checksum' => 0, 'xorsum' => 0];
 
-        return $row['num'] . '-' . $row['checksum'];
+        return $row['num'] . '-' . $row['checksum'] . '-' . $row['xorsum'];
     }
 
     /**
@@ -158,9 +169,10 @@ class Route extends AbstractRestController {
      * -> (e.g. new system added, connection added/updated, ...)
      * @param array $mapIds
      * @param array $filterData
+     * @param string|null $signature pre-computed connection signature -> avoids recomputing it per call
      * @throws \Exception
      */
-    private function setDynamicJumpData($mapIds = [], $filterData = []){
+    private function setDynamicJumpData($mapIds = [], $filterData = [], $signature = null){
         // make sure, mapIds are integers (protect against SQL injections)
         $mapIds = array_unique( array_map('intval', $mapIds), SORT_NUMERIC);
 
@@ -206,7 +218,14 @@ class Route extends AbstractRestController {
                 // lifetime: exclude buckets worse than the selected minimum ('' == < 24h => exclude all)
                 $lifetimeOrder = ['wh_lt_4h', 'wh_lt_1h', 'wh_eol'];
                 $lifetimeMin   = $filterData['wormholesLifetimeMin'];
-                $startExclude  = ($lifetimeMin === '') ? 0 : (array_search($lifetimeMin, $lifetimeOrder, true) + 1);
+                $lifetimeIdx   = array_search($lifetimeMin, $lifetimeOrder, true);
+                if( $lifetimeMin === '' ){
+                    $startExclude = 0;                          // '' => exclude all worse buckets
+                }elseif( $lifetimeIdx === false ){
+                    $startExclude = count($lifetimeOrder);      // unknown value => no lifetime filter
+                }else{
+                    $startExclude = $lifetimeIdx + 1;
+                }
                 $excludeTypes  = array_merge($excludeTypes, array_slice($lifetimeOrder, $startExclude));
 
                 // size: exclude sizes smaller than the selected minimum
@@ -262,7 +281,7 @@ class Route extends AbstractRestController {
                 // make this cached query connection-state-aware: the signature changes when any
                 // relevant connection changes, so the appended comment busts F3's SQL query cache
                 // (which hashes the raw SQL text) instead of serving a stale graph for the whole TTL
-                $query .= "\n/* sig:" . $this->getConnectionSignature($mapIds) . " */";
+                $query .= "\n/* sig:" . ($signature ?? $this->getConnectionSignature($mapIds)) . " */";
 
                 $rows = $this->getDB()->exec($query,  null, $this->dynamicJumpDataCacheTime);
 
@@ -542,18 +561,19 @@ class Route extends AbstractRestController {
      * @param int $searchDepth
      * @param array $mapIds
      * @param array $filterData
+     * @param string|null $signature pre-computed connection signature -> threaded down to avoid recomputing
      * @return array
      * @throws \Exception
      */
-    public function searchRoute(int $systemFromId, int $systemToId, $searchDepth = 0, array $mapIds = [], array $filterData = []) : array {
+    public function searchRoute(int $systemFromId, int $systemToId, $searchDepth = 0, array $mapIds = [], array $filterData = [], $signature = null) : array {
         // search root by ESI API
-        $routeData = $this->searchRouteESI($systemFromId, $systemToId, $searchDepth, $mapIds, $filterData);
+        $routeData = $this->searchRouteESI($systemFromId, $systemToId, $searchDepth, $mapIds, $filterData, $signature);
 
         // Endpoint return http:404 in case no route find (e.g. from inside a wh)
         // we thread that error "no route found" as a valid response! -> no fallback to custom search
         if(!empty($routeData['error']) && strtolower($routeData['error']) !== 'no route found'){
             // ESI route search has errors -> fallback to custom search implementation
-            $routeData = $this->searchRouteCustom($systemFromId, $systemToId, $searchDepth, $mapIds, $filterData);
+            $routeData = $this->searchRouteCustom($systemFromId, $systemToId, $searchDepth, $mapIds, $filterData, $signature);
         }
 
         return $routeData;
@@ -566,10 +586,11 @@ class Route extends AbstractRestController {
      * @param int $searchDepth
      * @param array $mapIds
      * @param array $filterData
+     * @param string|null $signature pre-computed connection signature
      * @return array
      * @throws \Exception
      */
-    private function searchRouteCustom(int $systemFromId, int $systemToId, $searchDepth = 0, array $mapIds = [], array $filterData = []) : array {
+    private function searchRouteCustom(int $systemFromId, int $systemToId, $searchDepth = 0, array $mapIds = [], array $filterData = [], $signature = null) : array {
         // reset all previous set jump data
         $this->resetJumpData();
 
@@ -585,7 +606,7 @@ class Route extends AbstractRestController {
             $this->setStaticJumpData();
 
             // add map specific data
-            $this->setDynamicJumpData($mapIds, $filterData);
+            $this->setDynamicJumpData($mapIds, $filterData, $signature);
 
             // add current Thera connections data
             if($filterData['wormholesThera']){
@@ -650,10 +671,11 @@ class Route extends AbstractRestController {
      * @param int $searchDepth
      * @param array $mapIds
      * @param array $filterData
+     * @param string|null $signature pre-computed connection signature
      * @return array
      * @throws \Exception
      */
-    private function searchRouteESI(int $systemFromId, int $systemToId, int $searchDepth = 0, array $mapIds = [], array $filterData = []) : array {
+    private function searchRouteESI(int $systemFromId, int $systemToId, int $searchDepth = 0, array $mapIds = [], array $filterData = [], $signature = null) : array {
         // reset all previous set jump data
         $this->resetJumpData();
 
@@ -672,7 +694,7 @@ class Route extends AbstractRestController {
             // prepare search data ------------------------------------------------------------------------------------
 
             // add map specific data
-            $this->setDynamicJumpData($mapIds, $filterData);
+            $this->setDynamicJumpData($mapIds, $filterData, $signature);
 
             // add current Thera connections data
             if($filterData['wormholesThera']){
@@ -907,7 +929,7 @@ class Route extends AbstractRestController {
                         // get data from cache
                         $returnRoutData = $cachedData;
                     }else{
-                        $foundRoutData = $this->searchRoute($systemFromId, $systemToId, 0, $mapIds, $filterData);
+                        $foundRoutData = $this->searchRoute($systemFromId, $systemToId, 0, $mapIds, $filterData, $connectionSignature);
 
                         $returnRoutData = array_merge($returnRoutData, $foundRoutData);
 

@@ -242,7 +242,7 @@ define([
                                 // get current row data (important!)
                                 // -> "rowData" param is not current state, values are "on createCell()" state
                                 rowData = tableApi.row( $(cell).parents('tr')).data();
-                                let routeData = module.getRouteRequestDataFromRowData(rowData, module._systemData.mapId, module._routeSettings);
+                                let routeData = module.getRouteRequestDataFromRowData(rowData, module._routeSettings);
 
                                 // overwrite some params
                                 routeData.skipSearch = 0;
