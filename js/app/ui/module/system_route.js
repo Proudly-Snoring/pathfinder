@@ -246,6 +246,7 @@ define([
 
                                 // overwrite some params
                                 routeData.skipSearch = 0;
+                                routeData.forceSearch = 1; // user-initiated refresh -> bypass server cache
 
                                 let requestData = {
                                     routeData: [routeData]
@@ -544,7 +545,9 @@ define([
             let routeData = [];
 
             this._tableApi.rows().every(function(){
-                routeData.push(module.getRouteRequestDataFromRowData(this.data(), module._systemData.mapId));
+                let data = module.getRouteRequestDataFromRowData(this.data(), module._systemData.mapId);
+                data.forceSearch = 1; // user-initiated refresh -> bypass server cache
+                routeData.push(data);
             });
 
             this.getRouteData({routeData: routeData}, 'callbackAddRouteRows');

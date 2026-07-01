@@ -35,9 +35,11 @@ class Route extends AbstractRestController {
 
     /**
      * cache time for dynamic jump data (e.g. W-Space systems, Jumpbridges. ...)
+     * -> safe to keep long: both the route-result cache and the inner jump-data query are keyed on a
+     *    connection "signature" (see getConnectionSignature()), so any connection change busts them
      * @var int
      */
-    private $dynamicJumpDataCacheTime = 10;
+    private $dynamicJumpDataCacheTime = 300;
 
     /**
      * cache time for Thera connections from eve-scout.com
@@ -104,6 +106,50 @@ class Route extends AbstractRestController {
                 $this->updateJumpData($rows);
             }
         }
+    }
+
+    /**
+     * get a signature that changes whenever any route-relevant connection in $mapIds changes
+     * -> used to make the route-result cache and the inner jump-data query cache connection-state-aware,
+     *    so a long TTL stays correct: any connection add/delete/edit yields a new key -> fresh result
+     * -> COUNT covers insert/delete; CRC32 content sum covers edits to any field the route query filters
+     *    on (scope, type, source, target, endpoint types) - independent of the 1s "updated" resolution
+     * -> runs uncached (ttl 0) so it always reflects current DB state; one small indexed aggregate
+     * @param array $mapIds
+     * @return string
+     * @throws \Exception
+     */
+    private function getConnectionSignature($mapIds = []) : string {
+        // make sure, mapIds are integers (protect against SQL injections)
+        $mapIds = array_unique( array_map('intval', $mapIds), SORT_NUMERIC);
+
+        if( empty($mapIds) ){
+            return '0';
+        }
+
+        $whereMapIdsQuery = (count($mapIds) == 1) ? " = " . reset($mapIds) : " IN (" . implode(', ', $mapIds) . ")";
+
+        $query = "SELECT
+                    COUNT(*) num,
+                    COALESCE(SUM(CRC32(CONCAT_WS('#',
+                        `connection`.`id`,
+                        `connection`.`scope`,
+                        `connection`.`type`,
+                        `connection`.`source`,
+                        `connection`.`target`,
+                        `connection`.`sourceEndpointType`,
+                        `connection`.`targetEndpointType`
+                    ))), 0) checksum
+                  FROM
+                    `connection`
+                  WHERE
+                    `connection`.`active` = 1 AND
+                    `connection`.`mapId` " . $whereMapIdsQuery;
+
+        $rows = $this->getDB()->exec($query, null, 0);
+        $row = $rows[0] ?? ['num' => 0, 'checksum' => 0];
+
+        return $row['num'] . '-' . $row['checksum'];
     }
 
     /**
@@ -212,6 +258,11 @@ class Route extends AbstractRestController {
                               `connection`.`active` = 1 AND 
                               `connection`.`mapId` " . $whereMapIdsQuery . "
                               ";
+
+                // make this cached query connection-state-aware: the signature changes when any
+                // relevant connection changes, so the appended comment busts F3's SQL query cache
+                // (which hashes the raw SQL text) instead of serving a stale graph for the whole TTL
+                $query .= "\n/* sig:" . $this->getConnectionSignature($mapIds) . " */";
 
                 $rows = $this->getDB()->exec($query,  null, $this->dynamicJumpDataCacheTime);
 
@@ -722,14 +773,16 @@ class Route extends AbstractRestController {
      * @param $systemFrom
      * @param $systemTo
      * @param array $filterData
+     * @param string $signature connection-state signature -> busts the cache when connections change
      * @return string
      */
-    private function getRouteCacheKey($mapIds, $systemFrom, $systemTo, $filterData = []){
+    private function getRouteCacheKey($mapIds, $systemFrom, $systemTo, $filterData = [], $signature = ''){
 
         $keyParts = [
             implode('_', $mapIds),
             self::formatHiveKey($systemFrom),
-            self::formatHiveKey($systemTo)
+            self::formatHiveKey($systemTo),
+            $signature
         ];
 
         $keyParts += $filterData;
@@ -835,14 +888,22 @@ class Route extends AbstractRestController {
                     $systemTo       = $routeData['systemToData']['name'];
                     $systemToId     = (int)$routeData['systemToData']['systemId'];
 
+                    // connection-state signature -> makes the cache key change on any connection edit
+                    $connectionSignature = $this->getConnectionSignature($mapIds);
+
                     $cacheKey = $this->getRouteCacheKey(
                         $mapIds,
                         $systemFrom,
                         $systemTo,
-                        $filterData
+                        $filterData,
+                        $connectionSignature
                     );
 
-                    if($f3->exists($cacheKey, $cachedData)){
+                    // user-initiated refresh -> force a fresh calculation, ignore the cached route
+                    // (still (re)writes the cache below so later non-forced requests get the fresh result)
+                    $forceSearch = (bool) ($routeData['forceSearch'] ?? false);
+
+                    if(!$forceSearch && $f3->exists($cacheKey, $cachedData)){
                         // get data from cache
                         $returnRoutData = $cachedData;
                     }else{
@@ -855,7 +916,14 @@ class Route extends AbstractRestController {
                             isset($returnRoutData['routePossible']) &&
                             $returnRoutData['routePossible'] === true
                         ){
-                            $f3->set($cacheKey, $returnRoutData, $this->dynamicJumpDataCacheTime);
+                            // Thera hops come from an external source (setTheraJumpData) and are NOT in the
+                            // connection table -> the signature can't see them; cap the TTL so a Thera hole
+                            // appearing/collapsing is not hidden behind the long dynamic cache
+                            $cacheTTL = $filterData['wormholesThera']
+                                ? min($this->dynamicJumpDataCacheTime, $this->theraJumpDataCacheTime)
+                                : $this->dynamicJumpDataCacheTime;
+
+                            $f3->set($cacheKey, $returnRoutData, $cacheTTL);
                         }
                     }
                 }
