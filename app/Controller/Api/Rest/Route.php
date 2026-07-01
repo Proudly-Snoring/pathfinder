@@ -127,7 +127,6 @@ class Route extends AbstractRestController {
             $includeScopes = [];
             $includeTypes = [];
             $excludeTypes = [];
-            $includeEOL = true;
 
             $excludeEndpointTypes = [];
 
@@ -149,21 +148,26 @@ class Route extends AbstractRestController {
                 $includeScopes[] = 'wh';
                 $includeTypes[] = 'wh_fresh';
 
-
-                if( $filterData['wormholesReduced'] === true ){
+                // mass: include reduced/critical up to the selected minimum
+                $massMin = $filterData['wormholesMassMin'];
+                if( in_array($massMin, ['wh_reduced', 'wh_critical'], true) ){
                     $includeTypes[] = 'wh_reduced';
                 }
-
-                if( $filterData['wormholesCritical'] === true ){
+                if( $massMin === 'wh_critical' ){
                     $includeTypes[] = 'wh_critical';
                 }
 
-                if( $filterData['wormholesEOL'] === false ){
-                    $includeEOL = false;
-                }
+                // lifetime: exclude buckets worse than the selected minimum ('' == < 24h => exclude all)
+                $lifetimeOrder = ['wh_lt_4h', 'wh_lt_1h', 'wh_eol'];
+                $lifetimeMin   = $filterData['wormholesLifetimeMin'];
+                $startExclude  = ($lifetimeMin === '') ? 0 : (array_search($lifetimeMin, $lifetimeOrder, true) + 1);
+                $excludeTypes  = array_merge($excludeTypes, array_slice($lifetimeOrder, $startExclude));
 
-                if(!empty($filterData['excludeTypes'])){
-                    $excludeTypes = $filterData['excludeTypes'];
+                // size: exclude sizes smaller than the selected minimum
+                $sizeOrder = ['wh_jump_mass_s', 'wh_jump_mass_m', 'wh_jump_mass_l', 'wh_jump_mass_xl'];
+                $sIdx = array_search($filterData['wormholesSizeMin'], $sizeOrder, true);
+                if( $sIdx !== false && $sIdx > 0 ){
+                    $excludeTypes = array_merge($excludeTypes, array_slice($sizeOrder, 0, $sIdx));
                 }
             }
 
@@ -182,10 +186,6 @@ class Route extends AbstractRestController {
 
                 if( !empty($includeTypes) ){
                     $whereQuery .= " `connection`.`type` REGEXP '" . implode("|", $includeTypes) . "' AND ";
-                }
-
-                if(!$includeEOL){
-                    $whereQuery .= " `connection`.`eolUpdated` IS NULL AND ";
                 }
 
                 if( !empty($excludeEndpointTypes) ){
@@ -804,17 +804,15 @@ class Route extends AbstractRestController {
 
                 // search route with filter options
                 $filterData = [
-                    'stargates'             => (bool) ($routeData['stargates'] ?? false),
-                    'jumpbridges'           => (bool) ($routeData['jumpbridges'] ?? false),
-                    'wormholes'             => (bool) ($routeData['wormholes'] ?? false),
-                    'wormholesReduced'      => (bool) ($routeData['wormholesReduced'] ?? false),
-                    'wormholesCritical'     => (bool) ($routeData['wormholesCritical'] ?? false),
-                    'wormholesEOL'          => (bool) ($routeData['wormholesEOL'] ?? false),
-                    'wormholesThera'        => (bool) ($routeData['wormholesThera'] ?? false),
-                    'wormholesSizeMin'      => (string) ($routeData['wormholesSizeMin'] ?? ''),
-                    'excludeTypes'          => (array) ($routeData['excludeTypes'] ?? []),
-                    'endpointsBubble'       => (bool) ($routeData['endpointsBubble'] ?? false),
-                    'flag'                  => $routeData['flag'] ?? null
+                    'stargates'              => (bool) ($routeData['stargates'] ?? false),
+                    'jumpbridges'            => (bool) ($routeData['jumpbridges'] ?? false),
+                    'wormholes'              => (bool) ($routeData['wormholes'] ?? false),
+                    'wormholesThera'         => (bool) ($routeData['wormholesThera'] ?? false),
+                    'wormholesLifetimeMin'   => (string) ($routeData['wormholesLifetimeMin'] ?? 'wh_lt_4h'),
+                    'wormholesMassMin'       => (string) ($routeData['wormholesMassMin']     ?? 'wh_reduced'),
+                    'wormholesSizeMin'       => (string) ($routeData['wormholesSizeMin']     ?? 'wh_jump_mass_m'),
+                    'endpointsBubble'        => (bool) ($routeData['endpointsBubble'] ?? false),
+                    'flag'                   => $routeData['flag'] ?? null
                 ];
 
                 $returnRoutData = [
