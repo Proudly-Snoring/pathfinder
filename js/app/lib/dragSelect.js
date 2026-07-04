@@ -77,8 +77,8 @@ define(['app/lib/eventHandler'], (EventHandler) => {
          */
         setCursorPosition(e){
             Object.assign(this._cursorPosition, {
-                x: e.pageX,
-                y: e.pageY
+                x: e.clientX,
+                y: e.clientY
             });
         }
 
@@ -145,8 +145,8 @@ define(['app/lib/eventHandler'], (EventHandler) => {
          */
         showSelectBox(e){
             Object.assign(this._selectBoxOrigin, {
-                left: e.pageX - this._targetDim.left,
-                top:  e.pageY - this._targetDim.top
+                left: e.clientX - this._targetDim.left,
+                top:  e.clientY - this._targetDim.top
             });
 
             // limit render "reflow" bny adding all properties at once
