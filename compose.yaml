@@ -15,7 +15,6 @@ services:
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
       MYSQL_PF_DB_NAME: ${MYSQL_PF_DB_NAME}
       MYSQL_UNIVERSE_DB_NAME: ${MYSQL_UNIVERSE_DB_NAME}
-      MYSQL_CCP_DB_NAME: ${MYSQL_CCP_DB_NAME}
       TZ: ${TZ}
     volumes:
       - db_data:/var/lib/mysql

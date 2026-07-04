@@ -8,7 +8,6 @@ A map of every datastore the app uses, **what** it holds, **how it is imported/s
 |----------------|-------------|------------------------------------------------------------|
 | `pathfinder`   | MariaDB     | operational app data (maps, chars, logs, sessions)         |
 | `eve_universe` | MariaDB     | local mirror of CCP static universe data (seeded from SDE; refreshed via ESI) |
-| `eve_ccp`      | MariaDB     | **unused** in this version (legacy SDE slot)               |
 
 | Store       | Backend     | Holds                                                      |
 |-------------|-------------|------------------------------------------------------------|
@@ -53,7 +52,7 @@ Models are defined in `app/Model/Universe/*`.
 - Map hierarchy: `region` → `constellation` → `system` → `star`, `planet`, `stargate`, `station`, `structure`.
 - Item data: `category` → `group` → `type`, plus `dogma_attribute`, `type_attribute`.
 - Gameplay overlays: `system_static` (wormhole statics per system), `sovereignty_map`, `faction_war_system`, `faction`, `race`, `alliance`, `corporation`.
-- `system_neighbour` — precomputed adjacency index for route search (see §4).
+- `system_neighbour` — precomputed adjacency index for route search (see §3).
 
 **Creation**
 1. **`/setup` admin buttons** — the browser drives a chunked AJAX loop (`js/app/setup.js` → `Api/Setup::buildIndex`). The bulk seed is sourced from the **CCP SDE** (JSON Lines), not ESI:
@@ -74,13 +73,7 @@ Models are defined in `app/Model/Universe/*`.
 
 ---
 
-## 3. `eve_ccp` DB (alias `CCP`)
-
-Configured (`DB_CCP_*` in `environment.ini`, `MYSQL_CCP_DB_NAME` in `.env`) and created by `init-databases.sh`, but **no code references the `CCP` alias in this version** (`getDB('CCP')` appears nowhere). It is a legacy slot for the old CCP database export (SDE MySQL conversion) and stays empty. Safe to ignore; left in place so config matches upstream.
-
----
-
-## 4. Search indexes
+## 3. Search indexes
 
 Two "indexes" are built by `/setup` → *Build search index* from `eve_universe` data:
 - **Systems data index** — lives in the **app cache** (filesystem `tmp/cache/`), not a DB table. Built by `UniverseController::buildSystemsIndex()` from the `system` table for fast name search. Lost on cache clear / rebuild; rebuilt on demand.
@@ -88,12 +81,12 @@ Two "indexes" are built by `/setup` → *Build search index* from `eve_universe`
 
 ---
 
-## 5. Caches & ephemeral stores
+## 4. Caches & ephemeral stores
 
 **App cache — filesystem.** `CACHE = folder=tmp/cache/` and `API_CACHE = {{@CACHE}}` (`config.ini`; *not* overridden in the container — `entrypoint.sh` only `envsubst`s, and these lines have no env vars). Despite model comments saying "RAM"/Redis, in this stack everything caches to `pathfinder/tmp/cache/`:
 - ESI HTTP responses (honoring each response's `Expires` header — this is what makes repeated `getUniverseSystems` etc. cheap),
 - DB query cache + DB schema cache,
-- the systems search index (§4),
+- the systems search index (§3),
 - CSV import temp data (`DEFAULT_CACHE_CSV_TTL`).
 
 `tmp/cache/` is **not a volume** → a `--build` rebuild wipes it. Consequence: ESI cache and the systems search index are lost and lazily rebuilt, but `eve_universe`/`pathfinder` data on the `db_data` volume survive. Clearable from `/setup` ("Delete files").
@@ -104,7 +97,7 @@ Two "indexes" are built by `/setup` → *Build search index* from `eve_universe`
 
 ---
 
-## 6. Cron schedule summary
+## 5. Cron schedule summary
 
 Defined in `app/cron.ini`, run by busybox-cron + `app/Lib/Cron.php`.
 
@@ -124,7 +117,7 @@ Defined in `app/cron.ini`, run by busybox-cron + `app/Lib/Cron.php`.
 
 ---
 
-## 7. What survives what
+## 6. What survives what
 
 | Operation                       | `db_data` (PF + universe) | `redis_data` | `pf_history` | `tmp/cache`         |
 |---------------------------------|---------------------------|--------------|--------------|---------------------|
