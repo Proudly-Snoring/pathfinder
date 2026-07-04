@@ -55,7 +55,7 @@ RUN npm run gulp production
 # Runtime stage: nginx + php-fpm + supervisord
 # ==============================================================================
 
-FROM trafex/php-nginx:3.11.1
+FROM docker.io/trafex/php-nginx:3.11.1
 
 # trafex/php-nginx defaults to USER nobody (rootless); this app's supervisord stack
 # (php-fpm + nginx + crond) needs root, as the previous base image ran.
