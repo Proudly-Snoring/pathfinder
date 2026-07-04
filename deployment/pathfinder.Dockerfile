@@ -33,7 +33,7 @@ RUN composer dump-autoload --no-dev --optimize
 # Assets stage: compile front-end (JS / CSS / images) with the gulp toolchain
 # ==============================================================================
 
-FROM node:24-bullseye-slim as assets
+FROM node:24-alpine as assets
 
 WORKDIR /app
 
