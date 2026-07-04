@@ -689,7 +689,11 @@ let getAssetFilterOptions = (compression, fileExt) => {
     return {
         srcModules: [
             PATH.ASSETS.DEST +'/**/*.' + fileExt,
-            '!' + PATH.ASSETS.DEST + '/js/' + CONF.TAG + '{,/**/*}'
+            // Exclude this build's own already-tagged output dir (built earlier in the same
+            // pipeline, e.g. public/css/<tag> from task:sass) so it isn't rescanned/reprocessed.
+            // Was hardcoded to '/js/' for both js and css, which for css referenced a directory
+            // that may not exist yet (created by the parallel JS pipeline) -> racy ENOENT on scandir.
+            '!' + PATH.ASSETS.DEST + '/' + fileExt + '/' + CONF.TAG + '{,/**/*}'
         ],
         fileFilter: filter(file => CONF[fileExt.toUpperCase()][compression.toUpperCase()])
     };

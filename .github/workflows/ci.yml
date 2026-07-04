@@ -1,0 +1,137 @@
+name: CI
+
+on:
+  push:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    container: php:8.5-fpm-alpine
+    steps:
+      - name: Install container prerequisites
+        shell: sh
+        run: apk add --no-cache bash git
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Cache Composer dependencies
+        id: cache-composer
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+
+      - name: Install PHP extensions
+        if: steps.cache-composer.outputs.cache-hit != 'true'
+        run: |
+          apk add --no-cache libpng-dev $PHPIZE_DEPS
+          docker-php-ext-install gd pdo_mysql
+
+      - name: Install Composer
+        if: steps.cache-composer.outputs.cache-hit != 'true'
+        run: curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+
+      - name: Install PHP dependencies
+        if: steps.cache-composer.outputs.cache-hit != 'true'
+        run: composer install --no-dev --optimize-autoloader --no-interaction
+
+      - name: Cache frontend build
+        id: cache-build
+        uses: actions/cache@v4
+        with:
+          path: public
+          key: assets-${{ hashFiles('package-lock.json', 'gulpfile.js', 'app/pathfinder.ini', 'js/**', 'sass/**', 'img/**') }}
+
+      - name: Install Node
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        run: apk add --no-cache nodejs npm
+
+      - name: Install npm dependencies
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        run: npm ci
+
+      - name: Build frontend assets
+        if: steps.cache-build.outputs.cache-hit != 'true'
+        run: npm run gulp production
+
+  lint:
+    runs-on: ubuntu-latest
+    container: php:8.5-fpm-alpine
+    steps:
+      - name: Install container prerequisites
+        shell: sh
+        run: apk add --no-cache bash git nodejs npm
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Lint PHP files
+        run: |
+          status=0
+          while IFS= read -r -d '' file; do
+            php -l "$file" || status=1
+          done < <(find app -name "*.php" -print0)
+          exit $status
+
+      - name: Install npm dependencies
+        run: npm ci
+
+      - name: Lint JS files
+        run: npx eslint .
+
+  dry-run:
+    needs: build
+    runs-on: ubuntu-latest
+    container: php:8.5-fpm-alpine
+    steps:
+      - name: Install container prerequisites
+        shell: sh
+        run: |
+          apk add --no-cache bash git libpng-dev $PHPIZE_DEPS
+          docker-php-ext-install gd pdo_mysql
+
+      - name: Checkout repository
+        uses: actions/checkout@v6
+
+      - name: Restore Composer dependencies
+        uses: actions/cache@v4
+        with:
+          path: vendor
+          key: composer-${{ hashFiles('composer.lock') }}
+
+      - name: Restore frontend build
+        uses: actions/cache@v4
+        with:
+          path: public
+          key: assets-${{ hashFiles('package-lock.json', 'gulpfile.js', 'app/pathfinder.ini', 'js/**', 'sass/**', 'img/**') }}
+
+      - name: Start server and check for errors
+        run: |
+          php -S 127.0.0.1:8080 index.php > server.log 2>&1 &
+          SERVER_PID=$!
+
+          READY=0
+          for i in $(seq 1 10); do
+            if curl -s -o /dev/null "http://127.0.0.1:8080/"; then
+              READY=1
+              break
+            fi
+            sleep 1
+          done
+
+          kill "$SERVER_PID" 2>/dev/null || true
+          wait "$SERVER_PID" 2>/dev/null || true
+
+          echo "== server.log =="
+          cat server.log
+
+          if [ "$READY" -ne 1 ]; then
+            echo "Server never responded"
+            exit 1
+          fi
+
+          if grep -q "Fatal error" server.log; then
+            echo "PHP fatal error detected"
+            exit 1
+          fi
