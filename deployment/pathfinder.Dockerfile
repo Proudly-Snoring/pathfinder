@@ -63,6 +63,9 @@ USER root
 
 RUN apk update \
   && apk add --no-cache busybox-suid sudo shadow gettext bash apache2-utils logrotate ca-certificates \
+  # nginx-mod-http-acme is ABI-locked to an exact nginx build; pin nginx to the matching version
+  # (the base image's baked-in nginx can lag behind what's current in the Alpine repo).
+  && apk add --no-cache 'nginx=1.28.3-r4' nginx-mod-http-acme \
   && apk add --no-cache php85-redis php85-pdo php85-pdo_mysql php85-fileinfo php85-zip
 
 # Symlink nginx logs to stdout/stderr for supervisord
@@ -71,8 +74,13 @@ RUN ln -sf /dev/stdout /var/log/nginx/access.log && ln -sf /dev/stderr /var/log/
 COPY deployment/logrotate/pathfinder /etc/logrotate.d/pathfinder
 COPY deployment/nginx/nginx.conf /etc/nginx/templateNginx.conf
 COPY deployment/nginx/site.conf /etc/nginx/templateSite.conf
+COPY deployment/nginx/site-tls.conf /etc/nginx/templateSiteTls.conf
+COPY deployment/nginx/locations.conf /etc/nginx/locations.conf
 # sites_enabled is created so entrypoint.sh can drop the rendered site.conf there
 RUN mkdir -p /etc/nginx/sites_enabled/
+# ACME account key + certs (ngx_http_acme_module state_path); persisted via the pf_acme volume
+# when ENABLE_TLS=true. nginx workers run as `nobody` (see nginx.conf `user nobody nobody;`).
+RUN mkdir -p /var/lib/nginx/acme && chown -R nobody:nobody /var/lib/nginx/acme
 
 # PHP-FPM pool + php.ini overrides (php.ini is rendered by entrypoint via envsubst)
 # Drop the base image's default www.conf so our pool is the only [www] (listens on :9000)
@@ -102,7 +110,7 @@ RUN rm -f index.php
 RUN touch /etc/nginx/.setup_pass
 RUN chmod +x /entrypoint.sh
 
-EXPOSE 80
+EXPOSE 80 443
 
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

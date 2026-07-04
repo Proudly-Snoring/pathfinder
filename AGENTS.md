@@ -23,7 +23,7 @@ Pathfinder is a system-mapping tool for *EVE Online*.
 ## References and documentation
 
 - `docs/contributing.md` — building assets (Composer + Gulp), versioning, linting.
-- `docs/deployment.md` — running the podman stack, SSO setup, first-run `/setup`.
+- `docs/deployment.md` — running the podman stack, SSO setup, first-run `/setup`, prod TLS (`ENABLE_TLS`).
 - `docs/data.md` — authoritative map of every datastore (the 3 DBs, caches, cron schedule, what survives a rebuild). Read this before touching data/crons/setup.
 
 ## Conventions / gotchas

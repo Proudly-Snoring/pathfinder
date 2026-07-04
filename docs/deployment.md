@@ -19,16 +19,17 @@ This directory holds the build context for a containerised Pathfinder stack.
 2. Create an Application on the Eve Online [Developer portal](https://developers.eveonline.com/applications):
   * After signing in go to "MANAGE APPLICATIONS" → "CREATE NEW APPLICATION".
   * Choose a name for your application (e.g. "Local Pathfinder develoment") and enter a description.
+  * Set the callback URL to `https://<YOUR_DOMAIN>/sso/callbackAuthorization` (or `http://localhost:8080/sso/callbackAuthorization` for local development).
   * Select the following "Enabled Scopes":
     - esi-characters.read_corporation_roles.v1
     - esi-clones.read_clones.v1
     - esi-corporations.read_corporation_membership.v1
-    - esi-location.read_online.v1
     - esi-location.read_location.v1
+    - esi-location.read_online.v1
     - esi-location.read_ship_type.v1
     - esi-search.search_structures.v1
-    - esi-ui.write_waypoint.v1
     - esi-ui.open_window.v1
+    - esi-ui.write_waypoint.v1
     - esi-universe.read_structures.v1
 3. Create the local configuration with `cp .env.example .env` and edit the `.env` file (change passwords + fill in the SSO info).
 4. Start the application with `podman compose up -d --build`.
@@ -50,6 +51,35 @@ podman compose logs -f <container> # just the app container
 ```
 
 The containers are listed in `compose.yaml`: `pfdb`, `redis`, `socket` and `pf`.
+
+## Production / TLS
+
+nginx serves HTTPS itself via its native ACME module (`ngx_http_acme_module`) — no separate reverse proxy or cert-renewal cron needed; certs are issued/renewed automatically from Let's Encrypt.
+
+Certs are issued via the ACME **tls-alpn-01** challenge (validated inside the TLS handshake on 443), not http-01 — the module's http-01 solver does not serve the challenge in this build (see `deployment/nginx/site-tls.conf`).
+
+Prerequisites:
+- A real domain with a DNS A/AAAA record pointing at this host.
+- Port 443 open to the internet and reachable as-is (Let's Encrypt's tls-alpn-01 challenge always connects to port 443 on `DOMAIN`). Port 80 is optional — it only serves the http -> https redirect.
+
+In `.env`:
+- `DOMAIN` — the bare public hostname (no port), e.g. `pathfinder.example.com`.
+- `HTTPS_PORT=443` — **must** be 443: Let's Encrypt's tls-alpn-01 challenge always connects to port 443 on `DOMAIN`.
+- `ENABLE_TLS=true`
+- `ACME_EMAIL` — your Let's Encrypt account contact.
+- `ACME_DIRECTORY_URL` — leave as the production Let's Encrypt directory, or swap to the staging directory while testing to avoid production rate limits.
+
+Rebuild and restart as usual:
+```shell
+podman compose up -d --build
+```
+
+Certs and the ACME account key persist in the `pf_acme` volume (`/var/lib/nginx/acme` in the container) — `podman compose down -v` wipes them too, which can trigger Let's Encrypt rate limits on the next issuance. Watch first-boot cert issuance with `podman compose logs -f pf`.
+
+If you want to switch from the let's encrypt staging environment to produciton, you need to delete the cache with:
+```shell
+podman exec pathfinder sh -c 'rm -f /var/lib/nginx/acme/*'
+```
 
 ## Notes
 
