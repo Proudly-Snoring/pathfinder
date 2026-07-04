@@ -9,6 +9,7 @@ on:
 
 jobs:
   pull-request-review:
+    if: github.event.pull_request.user.type != 'Bot'
     runs-on: ubuntu-latest
     permissions:
       contents: read
