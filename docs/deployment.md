@@ -76,7 +76,7 @@ podman compose up -d --build
 
 Certs and the ACME account key persist in the `pf_acme` volume (`/var/lib/nginx/acme` in the container) — `podman compose down -v` wipes them too, which can trigger Let's Encrypt rate limits on the next issuance. Watch first-boot cert issuance with `podman compose logs -f pf`.
 
-If you want to switch from the let's encrypt staging environment to produciton, you need to delete the cache with:
+If you want to switch from the let's encrypt staging environment to production, you need to delete the cache with:
 ```shell
 podman exec pathfinder sh -c 'rm -f /var/lib/nginx/acme/*'
 ```
