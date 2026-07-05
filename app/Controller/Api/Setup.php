@@ -326,6 +326,10 @@ class Setup extends Controller\Controller {
                         $colVal = (int)$data[$col];
                         if(!in_array($colVal, $invalidIds)){
                             $relModel = $systemStaticModel->rel($col);
+                            if($col === 'typeId'){
+                                // keep dogma attributes (mass/security) for wormhole types lazily created here
+                                $relModel->storeDogmaAttributes = true;
+                            }
                             // lazily import the referenced universe record (system/type) from ESI
                             // if it is not already in the local DB -> loadById() fetches + persists it.
                             // (getById() alone would only check the DB and skip every row whose

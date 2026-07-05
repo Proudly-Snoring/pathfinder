@@ -313,6 +313,10 @@ class TypeModel extends AbstractUniverseModel {
                     $typeAttribute->value       = $dogmaAttributeData['value'];
                     $typeAttribute->save();
                 }
+                // rel() returns a cached/shared mapper instance (Cortex Registry) -> without
+                // reset(), the next iteration reuses this now non-dry object and save() UPDATEs
+                // the row just inserted instead of INSERTing a new one for the next attribute.
+                $typeAttribute->reset();
             }
         }
     }
