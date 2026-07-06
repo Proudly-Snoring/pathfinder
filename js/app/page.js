@@ -53,6 +53,9 @@ define([
 
         headMaxLocationHistoryBreadcrumbs: 3,                                   // max breadcrumb count for character log history
 
+        // connection banner (persistent, shown while a connection problem is retried)
+        connectionBannerClass: 'pf-connection-banner',
+
         // footer
         footerLicenceLinkClass: 'pf-footer-licence',                            // class for "licence" link
         footerClockClass: 'pf-footer-clock',                                    // class for EVE-Time clock
@@ -702,6 +705,23 @@ define([
 
         let executor = resolve => {
             let documentElement = $(document);
+
+            // connection banner ----------------------------------------------------------------------------------------
+            let connectionBannerEl = $('<div>', {
+                class: [config.connectionBannerClass, 'bg-color', 'bg-color-orange', 'txt-color', 'txt-color-white'].join(' '),
+                text: 'Connection lost. Reconnecting…'
+            }).hide();
+            $('#' + config.pageHeaderId).after(connectionBannerEl);
+
+            documentElement.on('pf:connectionLost', () => {
+                connectionBannerEl.stop(true).show();
+            });
+
+            documentElement.on('pf:connectionRestored', () => {
+                connectionBannerEl.stop(true).hide();
+                // auto-dismiss the reconnect escalation modal (if currently shown)
+                $('.pf-notification-dialog').modal('hide');
+            });
 
             // init slide menus ---------------------------------------------------------------------------------------
             let slideBarsController = new SlideBars();

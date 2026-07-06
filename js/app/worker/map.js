@@ -11,15 +11,45 @@ let socket = null;
 let ports = [];
 let characterPorts = [];
 
+// reconnect state (WebSocket dropped, not explicitly closed by any port) ============================================
+let wsUri = null;
+let wsReconnectAttempt = 0;
+let wsReconnectMaxDelay = 30000;
+let wsReconnectTimer = null;
+
+let getReconnectDelay = () => Math.min(1000 * Math.pow(2, wsReconnectAttempt), wsReconnectMaxDelay);
+
+let clearReconnect = () => {
+    clearTimeout(wsReconnectTimer);
+    wsReconnectTimer = null;
+    wsReconnectAttempt = 0;
+};
+
+let scheduleReconnect = () => {
+    if(!ports.length){
+        // no tab left listening -> don't keep retrying
+        return;
+    }
+
+    let delay = getReconnectDelay();
+    wsReconnectAttempt++;
+    wsReconnectTimer = setTimeout(() => {
+        initSocket(wsUri);
+    }, delay);
+};
+
 // init "WebSocket" connection ========================================================================================
 let initSocket = uri => {
     let MsgWorkerOpen = new MsgWorker('ws:open');
+    wsUri = uri;
 
     if(socket === null){
         socket = new WebSocket(uri);
 
         // "WebSocket" open -----------------------------------------------------------------------
         socket.onopen = e => {
+            clearReconnect();
+
             MsgWorkerOpen.meta({
                 readyState: socket.readyState
             });
@@ -54,6 +84,11 @@ let initSocket = uri => {
 
             broadcastPorts(MsgWorkerClosed);
             socket = null; // reset WebSocket
+
+            if(!closeEvent.wasClean){
+                // unexpected drop (server restart, network blip, ...) -> keep retrying
+                scheduleReconnect();
+            }
         };
 
         // "WebSocket" error ----------------------------------------------------------------------
@@ -169,15 +204,20 @@ self.addEventListener('connect', event => {   // jshint ignore:line
         switch(MsgWorkerMessage.command){
             case 'ws:init':
                 let data = MsgWorkerMessage.data();
+                if(data.reconnectMaxDelay){
+                    wsReconnectMaxDelay = data.reconnectMaxDelay;
+                }
                 // add character specific port (for broadcast) to individual ports (tabs)
                 addPort(port, data.characterId);
                 initSocket(data.uri);
                 break;
             case 'ws:send':
-                socket.send(JSON.stringify({
-                    task: MsgWorkerMessage.task(),
-                    load: MsgWorkerMessage.data()
-                }));
+                if(socket && socket.readyState === WebSocket.OPEN){
+                    socket.send(JSON.stringify({
+                        task: MsgWorkerMessage.task(),
+                        load: MsgWorkerMessage.data()
+                    }));
+                }
                 break;
             case 'sw:closePort':
                 port.close();
@@ -190,11 +230,19 @@ self.addEventListener('connect', event => {   // jshint ignore:line
                 // .. if not -> send "unsubscribe" event to WebSocket server
                 let portsLeft = getPortsByCharacterIds(characterIds);
 
-                if(!portsLeft.length){
+                if(
+                    !portsLeft.length &&
+                    socket && socket.readyState === WebSocket.OPEN
+                ){
                     socket.send(JSON.stringify({
                         task: MsgWorkerMessage.task(),
                         load: characterIds
                     }));
+                }
+
+                if(!ports.length){
+                    // no tab left at all -> stop any pending reconnect attempt
+                    clearReconnect();
                 }
                 break;
             case 'ws:close':
