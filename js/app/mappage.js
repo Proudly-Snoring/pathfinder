@@ -438,7 +438,7 @@ define([
                     }
                 });
 
-            }).fail((jqXHR, status, error) => handleAjaxErrorResponse(jqXHR, status, error, mapModule));
+            }).fail((jqXHR, status, error) => handleAjaxErrorResponse(jqXHR, status, error, mapModule, 'mapUpdate'));
         }else{
             // skip this mapUpdate trigger and init next one
             initMapUpdatePing(mapModule, false);
@@ -516,9 +516,15 @@ define([
                 ModuleMap.updateActiveMapUserData(mapModule).then(() => {
                     // map module update done, init new trigger
                     initMapUserUpdatePing(mapModule);
+
+                    // mirrors the mapUpdate success branch below: if a reconnect cleared the OTHER
+                    // (mapUpdate) trigger and it hasn't been restarted yet, resume it here too
+                    if(updateTimeouts.mapUpdate === 0){
+                        initMapUpdatePing(mapModule, false);
+                    }
                 });
             }
-        }).fail((jqXHR, status, error) => handleAjaxErrorResponse(jqXHR, status, error, mapModule));
+        }).fail((jqXHR, status, error) => handleAjaxErrorResponse(jqXHR, status, error, mapModule, 'userUpdate'));
     };
 
     /**
@@ -604,10 +610,11 @@ define([
 
     /**
      * enter "reconnecting" state for a transient (non-auth) ajax failure
-     * -> keeps retrying the map ping with exponential backoff instead of shutting down
+     * -> keeps retrying the ping that actually failed, with exponential backoff, instead of shutting down
      * @param mapModule
+     * @param source  which ping triggered the failure ('mapUpdate' | 'userUpdate')
      */
-    let enterReconnecting = mapModule => {
+    let enterReconnecting = (mapModule, source) => {
         if(!reconnectState.active){
             reconnectState.active = true;
             reconnectState.attempt = 0;
@@ -622,7 +629,11 @@ define([
         let delay = getReconnectBackoffDelay();
         reconnectState.attempt++;
         reconnectState.timer = setTimeout(() => {
-            triggerMapUpdatePing(mapModule, true);
+            if(source === 'userUpdate'){
+                triggerUserUpdatePing(mapModule);
+            }else{
+                triggerMapUpdatePing(mapModule, true);
+            }
         }, delay);
     };
 
@@ -645,8 +656,9 @@ define([
      * @param status
      * @param error
      * @param mapModule  present only when called from an active ping loop (not during app startup)
+     * @param source  which ping triggered this response ('mapUpdate' | 'userUpdate')
      */
-    let handleAjaxErrorResponse = (jqXHR, status, error, mapModule) => {
+    let handleAjaxErrorResponse = (jqXHR, status, error, mapModule, source) => {
         let reason = `${status} ${jqXHR.status}`;
         let firstError = error;
         let errorData = [];
@@ -669,9 +681,11 @@ define([
             }
         }else{
             // handle HTML (e.g. 502/504 gateway error, or PHP fatal)
+            // -> "restart and reload" only fits an actual shutdown; the transient/retry path uses "retryText" instead
             errorData.push({
                 type: 'error',
-                text: 'Please restart and reload this page'
+                text: 'Please restart and reload this page',
+                retryText: 'Connection problem, retrying…'
             });
         }
 
@@ -683,6 +697,15 @@ define([
             clearReconnectTimers();
             reconnectState.active = false;
             reconnectState.attempt = 0;
+
+            // dismiss any open reconnect modal first -> showNotificationDialog() no-ops while one is still
+            // in the DOM (js/app/ui/dialog/notification.js:49). Remove it (+ its backdrop) synchronously
+            // instead of an animated modal('hide'), since that only fires "hidden.bs.modal" (and lets
+            // bootbox actually remove the element) after the fade transition completes/if it fires at all
+            $('.pf-notification-dialog').remove();
+            $('.modal-backdrop').remove();
+            $('body').removeClass('modal-open').css('padding-right', '');
+
             $(document).trigger('pf:shutdown', {
                 status: jqXHR.status,
                 reason: `${reason}: ${firstError}`,
@@ -710,10 +733,10 @@ define([
         clearUpdateTimeouts();
 
         for(let err of errorData){
-            Util.showNotify({title: `${jqXHR.status || 0}: Connection problem`, text: err.text, type: 'warning'});
+            Util.showNotify({title: `${jqXHR.status || 0}: Connection problem`, text: err.retryText || err.text, type: 'warning'});
         }
 
-        enterReconnecting(mapModule);
+        enterReconnecting(mapModule, source);
     };
 
     // ================================================================================================================
