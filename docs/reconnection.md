@@ -7,20 +7,28 @@ WebSocket. Both now retry with backoff instead of forcing a logout.
 
 - `triggerMapUpdatePing` / `triggerUserUpdatePing` POST on a timer (`initMapUpdatePing`,
   `initMapUserUpdatePing`). On success both call `exitReconnecting()` and resume their own loop.
-- On ajax failure, `.fail()` calls `handleAjaxErrorResponse(jqXHR, status, error, mapModule)`:
+- On ajax failure, `.fail()` calls `handleAjaxErrorResponse(jqXHR, status, error, mapModule, source)`,
+  `source` being `'mapUpdate'` or `'userUpdate'` depending on which ping failed:
   - Server response has `reroute` set (genuine auth loss) -> clears all timers, fires
     `pf:shutdown` (unchanged logout/redirect behavior).
   - No `mapModule` (failure during app startup, no ping loop running yet) -> same shutdown
     behavior as before.
-  - Otherwise (transient failure inside an active ping loop: network blip, 502/504, JSON parse
-    error) -> `clearUpdateTimeouts()` stops both ping timers, a warning notify is shown, and
-    `enterReconnecting(mapModule)` takes over.
+  - No response body at all (network down) or a 5xx status -> an actual connectivity/server
+    problem: `clearUpdateTimeouts()` stops both ping timers, a warning notify is shown, and
+    `enterReconnecting(mapModule, source)` takes over.
+  - A JSON body with a 4xx status and no `reroute` -> a genuine application-level rejection (e.g.
+    failed validation/permission check), not a connectivity issue. Shown as a normal notify and the
+    ping that failed (`source`) is simply restarted on its usual schedule — no backoff, banner, or
+    escalation modal.
 - `enterReconnecting`: sets `reconnectState.active`, fires `pf:connectionLost` (once), sets header
-  status to `problem`, and schedules a retry via `triggerMapUpdatePing(mapModule, true)` (always
-  the *map* ping, even if the failure came from the user-update ping — recovering the map ping
-  restarts the user-update loop too once data arrives, see `initMapUpdatePing`'s `.then()`).
+  status to `problem`, and schedules a retry of whichever ping actually failed (`source`) —
+  `triggerUserUpdatePing(mapModule)` or `triggerMapUpdatePing(mapModule, true)`. Any retry still
+  pending from the *other* ping's earlier failure is cancelled first (`clearTimeout(reconnectState.timer)`)
+  so a stale timer can't fire later and spawn a second, independent ping loop after recovery.
 - Retry delay is exponential backoff: `getCurrentTriggerDelay() * 2^attempt`, capped at
   `RECONNECT_MAX_DELAY`. `reconnectState.attempt` increments each retry, resets on recovery.
+  `exitReconnecting()` (called at the top of both success handlers) always clears the pending retry
+  timer, not just the escalation-modal timer, for the same reason.
 - If the problem outlasts `RECONNECT_TIMEOUT` (from `enterReconnecting`'s first call), a
   `showReconnectModal()` timer fires: a "Connection problem" dialog with **Refresh** (reload page)
   and **Logout** buttons. Auto-dismissed by `pf:connectionRestored` if the connection recovers

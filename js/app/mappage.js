@@ -626,6 +626,9 @@ define([
 
         $(document).setProgramStatus('problem');
 
+        // cancel any still-pending retry from the other ping's failure before scheduling this one
+        clearTimeout(reconnectState.timer);
+
         let delay = getReconnectBackoffDelay();
         reconnectState.attempt++;
         reconnectState.timer = setTimeout(() => {
@@ -641,6 +644,12 @@ define([
      * leave "reconnecting" state after a successful ping response
      */
     let exitReconnecting = () => {
+        // always clear the pending retry timer, even if it belongs to the ping that did NOT just
+        // succeed (e.g. mapUpdate recovered while a userUpdate retry was still queued) -> otherwise
+        // it fires later regardless and spawns a second, independent ping loop
+        clearTimeout(reconnectState.timer);
+        reconnectState.timer = 0;
+
         if(reconnectState.active){
             reconnectState.active = false;
             reconnectState.attempt = 0;
@@ -734,7 +743,27 @@ define([
             return;
         }
 
-        // transient failure during an active ping loop -> degrade, keep retrying
+        // no response body at all (network down) or a 5xx -> an actual connectivity/server problem.
+        // A JSON body with a 4xx status and no "reroute" is a genuine application-level rejection
+        // (e.g. failed validation/permission check) -> retrying it forever won't help.
+        let isConnectivityFailure = !jqXHR.responseJSON || jqXHR.status >= 500;
+
+        if(!isConnectivityFailure){
+            for(let err of errorData){
+                Util.showNotify({title: err.status || 'Error', text: err.text, type: err.type || 'error'});
+            }
+
+            // not a connectivity problem -> resume the ping that failed on its normal schedule,
+            // no backoff/banner/escalation modal
+            if(source === 'userUpdate'){
+                initMapUserUpdatePing(mapModule);
+            }else{
+                initMapUpdatePing(mapModule, false);
+            }
+            return;
+        }
+
+        // transient connectivity failure during an active ping loop -> degrade, keep retrying
         clearUpdateTimeouts();
 
         for(let err of errorData){
