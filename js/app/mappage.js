@@ -698,6 +698,11 @@ define([
             reconnectState.active = false;
             reconnectState.attempt = 0;
 
+            // session is confirmed dead -> stop this tab's SharedWorker port too, otherwise its
+            // WebSocket keeps reconnecting with backoff forever (worker/map.js has no concept of
+            // "auth gone", only "closed cleanly or not")
+            MapWorker.close();
+
             // dismiss any open reconnect modal first -> showNotificationDialog() no-ops while one is still
             // in the DOM (js/app/ui/dialog/notification.js:49). Remove it (+ its backdrop) synchronously
             // instead of an animated modal('hide'), since that only fires "hidden.bs.modal" (and lets

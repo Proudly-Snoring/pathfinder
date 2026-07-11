@@ -719,8 +719,15 @@ define([
 
             documentElement.on('pf:connectionRestored', () => {
                 connectionBannerEl.stop(true).hide();
+
                 // auto-dismiss the reconnect escalation modal (if currently shown)
-                $('.pf-notification-dialog').modal('hide');
+                // -> remove synchronously instead of an animated modal('hide'): "hidden.bs.modal" (which lets
+                // bootbox actually remove the element) only fires after the fade transition completes, if at
+                // all -- a node left behind would permanently block the next showNotificationDialog() call
+                // (js/app/ui/dialog/notification.js:49 no-ops while one is still in the DOM)
+                $('.pf-notification-dialog').remove();
+                $('.modal-backdrop').remove();
+                $('body').removeClass('modal-open').css('padding-right', '');
             });
 
             // init slide menus ---------------------------------------------------------------------------------------
