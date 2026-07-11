@@ -112,5 +112,8 @@ RUN chmod +x /entrypoint.sh
 
 EXPOSE 80 443
 
+# Override base image's HEALTHCHECK (curls :8080/fpm-ping); this image serves on :80/:443
+HEALTHCHECK --interval=30s --timeout=3s CMD curl -f http://127.0.0.1:80/fpm-ping || exit 1
+
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
