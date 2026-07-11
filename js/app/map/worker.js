@@ -10,6 +10,7 @@ define([
     let sharedWorker    = null;
     let MsgWorker       = null;
     let characterId     = null;
+    let reconnectMaxDelay = null;   // max backoff delay (ms) for the SharedWorker's own WebSocket reconnect
 
     /**
      * get WebSocket URL for SharedWorker script
@@ -41,6 +42,7 @@ define([
         MsgWorkerInit.data({
             uri: getWebSocketURL(),
             characterId: characterId,
+            reconnectMaxDelay: reconnectMaxDelay
         });
 
         sendMessage(MsgWorkerInit);
@@ -53,6 +55,7 @@ define([
     let init = config => {
         // set characterId that is connected with this SharedWorker PORT
         characterId = parseInt(config.characterId);
+        reconnectMaxDelay = parseInt(config.reconnectMaxDelay) || null;
 
         // get  message Class for App <=> SharedWorker MessageEvent communication
         requirejs([getMessageWorkerObjectPath()], () => {

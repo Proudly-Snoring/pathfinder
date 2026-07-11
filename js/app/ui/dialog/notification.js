@@ -60,10 +60,15 @@ define([
                 let content = Mustache.render(template, data);
 
                 // show dialog
+                let dialogClassNames = config.notificationDialogClass;
+                if(dialogData.dialogClass){
+                    dialogClassNames += ' ' + dialogData.dialogClass;
+                }
+
                 let shutdownDialog = bootbox.dialog({
                     title: dialogData.content.title,
                     message: content,
-                    className: config.notificationDialogClass,
+                    className: dialogClassNames,
                     buttons: dialogData.buttons
                 });
 

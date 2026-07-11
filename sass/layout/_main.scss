@@ -1935,6 +1935,13 @@ code {
 
 }
 
+// persistent banner shown while a connection problem is being retried (issue #36)
+.pf-connection-banner{
+  padding: 6px 15px;
+  text-align: center;
+  font-weight: bold;
+}
+
 .pf-head{
   @include box-shadow(0 6px 12px rgba(0,0,0,.4));
 

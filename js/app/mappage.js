@@ -23,6 +23,14 @@ define([
         userUpdate: 0
     };
 
+    // connection retry state (transient ajax failures during the ping loop)
+    let reconnectState = {
+        active: false,      // true while a transient connection problem is being retried
+        attempt: 0,         // current backoff attempt count (reset on recovery)
+        timer: 0,           // pending retry timeout id
+        modalTimer: 0       // pending escalation-modal timeout id
+    };
+
     // log keys -----------------------------------------------------------------------------------------------
     let logKeyServerMapData = Init.performanceLogging.keyServerMapData;
     let logKeyServerUserData = Init.performanceLogging.keyServerUserData;
@@ -95,8 +103,8 @@ define([
                 if(response.error.length > 0){
                     for(let i = 0; i < response.error.length; i++){
                         Util.showNotify({
-                            title: response.error[i].title,
-                            text: response.error[i].message,
+                            title: response.error[i].status || 'Error',
+                            text: response.error[i].text,
                             type: response.error[i].type
                         });
                     }
@@ -218,6 +226,7 @@ define([
             // init SharedWorker for maps
             MapWorker.init({
                 characterId: accessData.data.id,
+                reconnectMaxDelay: Util.getObjVal(Init, 'timer.CONNECTION.RECONNECT_MAX_DELAY') || 30000,
                 callbacks: {
                     onInit: (MsgWorkerMessage) => {
                         Util.setSyncStatus(MsgWorkerMessage.command);
@@ -386,46 +395,50 @@ define([
                 Util.log(logKeyServerMapData, {duration: duration, type: 'server', description: 'request map data'});
 
                 Util.setSyncStatus('ajax:get');
+                exitReconnecting();
 
                 if(
                     data.error &&
                     data.error.length > 0
                 ){
-                    // any error in the main trigger functions result in a user log-off
-                    Util.triggerMenuAction(document, 'Logout');
-                }else{
-                    $(document).setProgramStatus('online');
-
-                    if(data.userData !== undefined){
-                        // store current user data global (cache)
-                        Util.setCurrentUserData(data.userData);
+                    // app-level error (e.g. failed validation) -> show on screen, keep running
+                    // -> logout only happens on an explicit server "reroute" (see handleAjaxErrorResponse)
+                    for(let err of data.error){
+                        Util.showNotify({title: err.status || 'Error', text: err.text, type: err.type || 'error'});
                     }
-
-                    // map data found
-                    Util.setCurrentMapData(data.mapData);
-
-                    // load/update main map module
-                    ModuleMap.updateMapModule(mapModule).then(() => {
-                        // map update done, init new trigger
-
-                        // get the current update delay (this can change if a user is inactive)
-                        let mapUpdateDelay = Util.getCurrentTriggerDelay(logKeyServerMapData, 0);
-
-                        // init new trigger
-                        initMapUpdatePing(mapModule, false);
-
-                        // initial start for the userUpdate trigger
-                        // this should only be called at the first time!
-                        if(updateTimeouts.userUpdate === 0){
-                            // start user update trigger after map loaded
-                            updateTimeouts.userUpdate = setTimeout(() => {
-                                triggerUserUpdatePing(mapModule);
-                            }, 500);
-                        }
-                    });
                 }
 
-            }).fail(handleAjaxErrorResponse);
+                $(document).setProgramStatus('online');
+
+                if(data.userData !== undefined){
+                    // store current user data global (cache)
+                    Util.setCurrentUserData(data.userData);
+                }
+
+                // map data found
+                Util.setCurrentMapData(data.mapData);
+
+                // load/update main map module
+                ModuleMap.updateMapModule(mapModule).then(() => {
+                    // map update done, init new trigger
+
+                    // get the current update delay (this can change if a user is inactive)
+                    let mapUpdateDelay = Util.getCurrentTriggerDelay(logKeyServerMapData, 0);
+
+                    // init new trigger
+                    initMapUpdatePing(mapModule, false);
+
+                    // initial start for the userUpdate trigger
+                    // this should only be called at the first time!
+                    if(updateTimeouts.userUpdate === 0){
+                        // start user update trigger after map loaded
+                        updateTimeouts.userUpdate = setTimeout(() => {
+                            triggerUserUpdatePing(mapModule);
+                        }, 500);
+                    }
+                });
+
+            }).fail((jqXHR, status, error) => handleAjaxErrorResponse(jqXHR, status, error, mapModule, 'mapUpdate'));
         }else{
             // skip this mapUpdate trigger and init next one
             initMapUpdatePing(mapModule, false);
@@ -470,37 +483,48 @@ define([
             let duration = Util.timeStop(logKeyServerUserData);
             Util.log(logKeyServerUserData, {duration: duration, type: 'server', description:'request user data'});
 
+            exitReconnecting();
+
             if(
                 data.error &&
                 data.error.length > 0
             ){
-                // any error in the main trigger functions result in a user log-off
-                Util.triggerMenuAction(document, 'Logout');
-            }else{
-                $(document).setProgramStatus('online');
-
-                if(data.userData !== undefined){
-                    // store current user data global (cache)
-                    Util.setCurrentUserData(data.userData);
-
-                    // update system info panels
-                    if(data.system){
-                        ModuleMap.updateSystemModulesData(mapModule, data.system);
-                    }
-
-                    // store current map user data (cache)
-                    if(data.mapUserData !== undefined){
-                        Util.setCurrentMapUserData(data.mapUserData);
-                    }
-
-                    // update map module character data
-                    ModuleMap.updateActiveMapUserData(mapModule).then(() => {
-                        // map module update done, init new trigger
-                        initMapUserUpdatePing(mapModule);
-                    });
+                // app-level error (e.g. failed validation) -> show on screen, keep running
+                // -> logout only happens on an explicit server "reroute" (see handleAjaxErrorResponse)
+                for(let err of data.error){
+                    Util.showNotify({title: err.status || 'Error', text: err.text, type: err.type || 'error'});
                 }
             }
-        }).fail(handleAjaxErrorResponse);
+
+            $(document).setProgramStatus('online');
+
+            if(data.userData !== undefined){
+                // store current user data global (cache)
+                Util.setCurrentUserData(data.userData);
+
+                // update system info panels
+                if(data.system){
+                    ModuleMap.updateSystemModulesData(mapModule, data.system);
+                }
+
+                // store current map user data (cache)
+                if(data.mapUserData !== undefined){
+                    Util.setCurrentMapUserData(data.mapUserData);
+                }
+
+                // update map module character data
+                ModuleMap.updateActiveMapUserData(mapModule).then(() => {
+                    // map module update done, init new trigger
+                    initMapUserUpdatePing(mapModule);
+
+                    // mirrors the mapUpdate success branch below: if a reconnect cleared the OTHER
+                    // (mapUpdate) trigger and it hasn't been restarted yet, resume it here too
+                    if(updateTimeouts.mapUpdate === 0){
+                        initMapUpdatePing(mapModule, false);
+                    }
+                });
+            }
+        }).fail((jqXHR, status, error) => handleAjaxErrorResponse(jqXHR, status, error, mapModule, 'userUpdate'));
     };
 
     /**
@@ -531,15 +555,120 @@ define([
     };
 
     /**
+     * clear pending reconnect timers (retry + escalation modal)
+     */
+    let clearReconnectTimers = () => {
+        clearTimeout(reconnectState.timer);
+        clearTimeout(reconnectState.modalTimer);
+        reconnectState.timer = 0;
+        reconnectState.modalTimer = 0;
+    };
+
+    /**
+     * get the backoff delay (ms) for the next reconnect attempt
+     * -> independent from the normal ping "CURRENT_DELAY" (that value is reused for user-inactivity)
+     * @returns {number}
+     */
+    let getReconnectBackoffDelay = () => {
+        let base = Util.getCurrentTriggerDelay(logKeyServerMapData, 0);
+        let cap = Util.getObjVal(Init, 'timer.CONNECTION.RECONNECT_MAX_DELAY') || 30000;
+        return Math.min(base * Math.pow(2, reconnectState.attempt), cap);
+    };
+
+    /**
+     * show the escalation modal (Refresh / Logout) once a connection problem persists
+     */
+    let showReconnectModal = () => {
+        if(!reconnectState.active){
+            // already recovered in the meantime
+            return;
+        }
+
+        $.fn.showNotificationDialog({
+            dialogClass: Page.reconnectDialogClass,
+            buttons: {
+                refresh: {
+                    label: '<i class="fas fa-fw fa-sync"></i>&nbsp;&nbsp;refresh page',
+                    className: 'btn-primary',
+                    callback: () => location.reload()
+                },
+                logout: {
+                    label: '<i class="fas fa-fw fa-sign-out-alt"></i>&nbsp;&nbsp;logout',
+                    className: 'btn-default',
+                    callback: () => Util.triggerMenuAction(document, 'Logout')
+                }
+            },
+            content: {
+                icon: 'fa-wifi',
+                class: 'txt-color-warning',
+                title: 'Connection problem',
+                headline: 'Reconnecting…',
+                text: ['Pathfinder lost connection to the server and is retrying in the background.'],
+                textSmaller: []
+            }
+        });
+    };
+
+    /**
+     * enter "reconnecting" state for a transient (non-auth) ajax failure
+     * -> keeps retrying the ping that actually failed, with exponential backoff, instead of shutting down
+     * @param mapModule
+     * @param source  which ping triggered the failure ('mapUpdate' | 'userUpdate')
+     */
+    let enterReconnecting = (mapModule, source) => {
+        if(!reconnectState.active){
+            reconnectState.active = true;
+            reconnectState.attempt = 0;
+            $(document).trigger('pf:connectionLost');
+
+            let reconnectTimeout = Util.getObjVal(Init, 'timer.CONNECTION.RECONNECT_TIMEOUT') || 60000;
+            reconnectState.modalTimer = setTimeout(showReconnectModal, reconnectTimeout);
+        }
+
+        $(document).setProgramStatus('problem');
+
+        // cancel any still-pending retry from the other ping's failure before scheduling this one
+        clearTimeout(reconnectState.timer);
+
+        let delay = getReconnectBackoffDelay();
+        reconnectState.attempt++;
+        reconnectState.timer = setTimeout(() => {
+            if(source === 'userUpdate'){
+                triggerUserUpdatePing(mapModule);
+            }else{
+                triggerMapUpdatePing(mapModule, true);
+            }
+        }, delay);
+    };
+
+    /**
+     * leave "reconnecting" state after a successful ping response
+     */
+    let exitReconnecting = () => {
+        // always clear the pending retry timer, even if it belongs to the ping that did NOT just
+        // succeed (e.g. mapUpdate recovered while a userUpdate retry was still queued) -> otherwise
+        // it fires later regardless and spawns a second, independent ping loop
+        clearTimeout(reconnectState.timer);
+        reconnectState.timer = 0;
+
+        if(reconnectState.active){
+            reconnectState.active = false;
+            reconnectState.attempt = 0;
+            clearTimeout(reconnectState.modalTimer);
+            reconnectState.modalTimer = 0;
+            $(document).trigger('pf:connectionRestored');
+        }
+    };
+
+    /**
      * Ajax error response handler function for main-ping functions
      * @param jqXHR
      * @param status
      * @param error
+     * @param mapModule  present only when called from an active ping loop (not during app startup)
+     * @param source  which ping triggered this response ('mapUpdate' | 'userUpdate')
      */
-    let handleAjaxErrorResponse = (jqXHR, status, error) => {
-        // clear both main update request trigger timer
-        clearUpdateTimeouts();
-
+    let handleAjaxErrorResponse = (jqXHR, status, error, mapModule, source) => {
         let reason = `${status} ${jqXHR.status}`;
         let firstError = error;
         let errorData = [];
@@ -561,21 +690,84 @@ define([
                 redirect = responseObj.reroute;
             }
         }else{
-            // handle HTML
+            // handle HTML (e.g. 502/504 gateway error, or PHP fatal)
+            // -> "restart and reload" only fits an actual shutdown; the transient/retry path uses "retryText" instead
             errorData.push({
                 type: 'error',
-                message: 'Please restart and reload this page'
+                text: 'Please restart and reload this page',
+                retryText: 'Connection problem, retrying…'
             });
         }
 
         console.error(' ↪ %s Error response: %o', jqXHR.url, errorData);
-        $(document).trigger('pf:shutdown', {
-            status: jqXHR.status,
-            reason: `${reason}: ${firstError}`,
-            error: errorData,
-            redirect: redirect,
-            reload: reload
-        });
+
+        if(redirect){
+            // genuine auth loss (server set "reroute") -> stop retrying, redirect
+            clearUpdateTimeouts();
+            clearReconnectTimers();
+            reconnectState.active = false;
+            reconnectState.attempt = 0;
+
+            // session is confirmed dead -> stop this tab's SharedWorker port too, otherwise its
+            // WebSocket keeps reconnecting with backoff forever (worker/map.js has no concept of
+            // "auth gone", only "closed cleanly or not")
+            MapWorker.close();
+
+            // dismiss any open reconnect modal first -> showNotificationDialog() no-ops while one is still
+            // in the DOM (js/app/ui/dialog/notification.js:49)
+            Page.dismissReconnectModal();
+
+            $(document).trigger('pf:shutdown', {
+                status: jqXHR.status,
+                reason: `${reason}: ${firstError}`,
+                error: errorData,
+                redirect: redirect,
+                reload: reload
+            });
+            return;
+        }
+
+        if(!mapModule){
+            // failure during app startup -> no ping loop to resume yet, keep current behaviour
+            clearUpdateTimeouts();
+            $(document).trigger('pf:shutdown', {
+                status: jqXHR.status,
+                reason: `${reason}: ${firstError}`,
+                error: errorData,
+                redirect: redirect,
+                reload: reload
+            });
+            return;
+        }
+
+        // no response body at all (network down) or a 5xx -> an actual connectivity/server problem.
+        // A JSON body with a 4xx status and no "reroute" is a genuine application-level rejection
+        // (e.g. failed validation/permission check) -> retrying it forever won't help.
+        let isConnectivityFailure = !jqXHR.responseJSON || jqXHR.status >= 500;
+
+        if(!isConnectivityFailure){
+            for(let err of errorData){
+                Util.showNotify({title: err.status || 'Error', text: err.text, type: err.type || 'error'});
+            }
+
+            // not a connectivity problem -> resume the ping that failed on its normal schedule,
+            // no backoff/banner/escalation modal
+            if(source === 'userUpdate'){
+                initMapUserUpdatePing(mapModule);
+            }else{
+                initMapUpdatePing(mapModule, false);
+            }
+            return;
+        }
+
+        // transient connectivity failure during an active ping loop -> degrade, keep retrying
+        clearUpdateTimeouts();
+
+        for(let err of errorData){
+            Util.showNotify({title: `${jqXHR.status || 0}: Connection problem`, text: err.retryText || err.text, type: 'warning'});
+        }
+
+        enterReconnecting(mapModule, source);
     };
 
     // ================================================================================================================
