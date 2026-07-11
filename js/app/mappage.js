@@ -585,6 +585,7 @@ define([
         }
 
         $.fn.showNotificationDialog({
+            dialogClass: Page.reconnectDialogClass,
             buttons: {
                 refresh: {
                     label: '<i class="fas fa-fw fa-sync"></i>&nbsp;&nbsp;refresh page',
@@ -713,12 +714,8 @@ define([
             MapWorker.close();
 
             // dismiss any open reconnect modal first -> showNotificationDialog() no-ops while one is still
-            // in the DOM (js/app/ui/dialog/notification.js:49). Remove it (+ its backdrop) synchronously
-            // instead of an animated modal('hide'), since that only fires "hidden.bs.modal" (and lets
-            // bootbox actually remove the element) after the fade transition completes/if it fires at all
-            $('.pf-notification-dialog').remove();
-            $('.modal-backdrop').remove();
-            $('body').removeClass('modal-open').css('padding-right', '');
+            // in the DOM (js/app/ui/dialog/notification.js:49)
+            Page.dismissReconnectModal();
 
             $(document).trigger('pf:shutdown', {
                 status: jqXHR.status,

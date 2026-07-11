@@ -55,6 +55,8 @@ define([
 
         // connection banner (persistent, shown while a connection problem is retried)
         connectionBannerClass: 'pf-connection-banner',
+        // extra marker class on the reconnect escalation dialog (scopes forced cleanup to just this dialog)
+        reconnectDialogClass: 'pf-reconnect-dialog',
 
         // footer
         footerLicenceLinkClass: 'pf-footer-licence',                            // class for "licence" link
@@ -698,6 +700,25 @@ define([
     };
 
     /**
+     * dismiss the reconnect escalation dialog (if currently shown)
+     * -> remove synchronously instead of an animated modal('hide'): "hidden.bs.modal" (which lets
+     * bootbox actually remove the element) only fires after the fade transition completes, if at
+     * all -- a node left behind would permanently block the next showNotificationDialog() call
+     * (js/app/ui/dialog/notification.js:49 no-ops while one is still in the DOM)
+     * -> scoped to reconnectDialogClass (not the shared notification dialog class) and only clears
+     *    the shared backdrop/body state if no other modal is left open, so an unrelated dialog
+     *    that happens to be open at the same time is left untouched
+     */
+    let dismissReconnectModal = () => {
+        $('.' + config.reconnectDialogClass).remove();
+
+        if(!$('.modal:visible').length){
+            $('.modal-backdrop').remove();
+            $('body').removeClass('modal-open').css('padding-right', '');
+        }
+    };
+
+    /**
      * set global document observers
      * @returns {Promise<any>}
      */
@@ -721,13 +742,7 @@ define([
                 connectionBannerEl.stop(true).hide();
 
                 // auto-dismiss the reconnect escalation modal (if currently shown)
-                // -> remove synchronously instead of an animated modal('hide'): "hidden.bs.modal" (which lets
-                // bootbox actually remove the element) only fires after the fade transition completes, if at
-                // all -- a node left behind would permanently block the next showNotificationDialog() call
-                // (js/app/ui/dialog/notification.js:49 no-ops while one is still in the DOM)
-                $('.pf-notification-dialog').remove();
-                $('.modal-backdrop').remove();
-                $('body').removeClass('modal-open').css('padding-right', '');
+                dismissReconnectModal();
             });
 
             // init slide menus ---------------------------------------------------------------------------------------
@@ -1557,6 +1572,8 @@ define([
         renderPage: renderPage,
         loadPageStructure: loadPageStructure,
         initTabChangeObserver: initTabChangeObserver,
-        renderMapContextMenus: renderMapContextMenus
+        renderMapContextMenus: renderMapContextMenus,
+        dismissReconnectModal: dismissReconnectModal,
+        reconnectDialogClass: config.reconnectDialogClass
     };
 });
