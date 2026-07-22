@@ -35,7 +35,7 @@
     "node-notifier": "^10.0.1",
     "pretty-bytes": "^7.1.0",
     "promised-del": "1.0.x",
-    "sass": "^1.101.0",
+    "sass": "^1.101.3",
     "sharp": "^0.35.3",
     "terminal-table": "0.0.x",
     "through2": "^5.0.5"
